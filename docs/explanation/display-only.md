@@ -31,7 +31,7 @@ Teardown restores only methods still owned by Lens, preserving wrappers installe
 
 Pi extensions can send user-role messages. That role does not prove human authorship.
 Published Pi 1.1.0 input events lack reliable message-to-row correlation; its inputs keep neutral `Input` labels.
-The local identity patch adds native `binding` metadata with exact `message`, `inputDisplay`, optional `entryId`, and row `part`.
+Origin-aware hosts expose native `binding` metadata with exact `message`, `inputDisplay`, optional `entryId`, and row `part`.
 Lens validates identity structurally, preserving compatibility with the pinned published peers.
 Clipboard normalization uses optional namespace access to the host helper, never a missing named runtime export.
 The helper receives the binding's exact message; only normalized composer captures enter the clipboard renderer.

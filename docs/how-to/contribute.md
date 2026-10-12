@@ -57,7 +57,7 @@ No build step is required: Pi loads the TypeScript entry point.
 
 ## Verify patched-host input provenance
 
-Published Pi 1.1.0 cannot prove input origin. Use a source checkout containing the identity patch (`e988874`).
+Published Pi 1.1.0 cannot prove input origin. Use a source host implementing the documented input-binding contract.
 Its dependencies and generated model data must already be hydrated; this fixture performs no installation or network access.
 
 ```sh
@@ -81,7 +81,7 @@ Source verification does not install the patched host or establish physical-term
 
 ## Verify clipboard presentation
 
-Use a frozen source checkout containing clipboard patch `2572b39`; do not run against another writer's mutable checkout.
+Use a frozen source host implementing the documented clipboard metadata contract; avoid another writer's mutable checkout.
 The portable component tests cover native images, Markdown, cache invalidation, and regular-renderer graphics cleanup.
 Two additional contract tests load the source host's real normalizer when `PI_LENS_SOURCE_HOST` is set.
 

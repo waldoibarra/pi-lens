@@ -21,7 +21,7 @@ No compilation step is required. Pi loads `src/index.ts` directly.
 - Keep private Pi access in the adapter and presentation boundary; retain native fallback.
 - Keep the live-voice editor and controls untouched. Fold only its recognized transcript messages.
 - Development copies of host packages stay in `devDependencies`; runtime hosts supply peers.
-- This repository is independent of `.dotfiles`; do not install into its linked settings during validation.
+- Validate in disposable profiles; do not change a contributor's normal configuration.
+- Keep operator-specific configuration, routing, usage records, and cross-repository plans outside this repository.
 
 Read [Contribute](docs/how-to/contribute.md) before testing voice compatibility or preparing a package.
-Read [the implementation plan](.agents/plan.md) before continuing unfinished parity work.
