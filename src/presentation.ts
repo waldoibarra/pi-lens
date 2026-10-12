@@ -32,6 +32,7 @@ import { hoverFor, hoverHeader } from './hover'
 import { projectProgress } from './progress'
 import { compactMessageShell, isMessageShell, isMessageSpacer } from './spacing'
 import { inputBinding, type InputBinding } from './adapter'
+import { clipboardInput, invalidateClipboardProjection } from './clipboard'
 import {
   disclosureBody,
   hasNativeImageReadContent,
@@ -363,14 +364,18 @@ function inputGroups(children: Component[]): Map<Component, InputGroup> {
     } else if (
       group.input?.id !== binding.input?.id ||
       group.input?.origin !== binding.input?.origin ||
-      group.entryId !== binding.entryId
+      group.entryId !== binding.entryId ||
+      JSON.stringify(group.clipboard) !== JSON.stringify(binding.clipboard)
     ) {
       conflicted.add(group)
     }
     group.rows.push(row)
     byRow.set(row, group)
   }
-  for (const group of conflicted) group.input = undefined
+  for (const group of conflicted) {
+    group.input = undefined
+    group.clipboard = undefined
+  }
   // Unexpected interleaving must not move native rows across prose, tools, or approvals.
   for (const group of byMessage.values()) {
     const first = children.indexOf(group.rows[0])
@@ -391,11 +396,26 @@ function inputRow(
   state: LensState,
   theme: Theme,
   redraw: () => void,
+  globalExpanded = false,
 ): Component {
   const at = typeof group.message.timestamp === 'number' ? group.message.timestamp : undefined
   if (group.input?.origin !== 'extension')
     return stack(
-      ...group.rows,
+      ...(clipboardInput(
+        group.rows,
+        group,
+        state,
+        theme,
+        (label, key) =>
+          clickable(
+            { render: (width) => line(label(), theme).render(width), invalidate() {} },
+            key,
+            state,
+            redraw,
+            theme,
+          ),
+        globalExpanded,
+      ) ?? group.rows),
       footer(at, undefined, theme, 'user', group.input?.origin === 'composer' ? 'You' : 'Input'),
     )
   const key = `input:${group.input.id}`
@@ -499,8 +519,21 @@ export function projectTranscript(
   }
   reconcileDisclosures(state, disclosures, state.view === 'raw', toolsExpanded)
   if (bypass) {
+    if (state.view === 'raw') invalidateClipboardProjection(children, state)
+    // Native global expansion cannot reveal sidecar bytes; keep its original rows except clipboard groups.
+    const drawnInputs = new Set<InputGroup>()
+    const result =
+      state.view === 'raw' || ![...inputs.values()].some((group) => group.clipboard)
+        ? children
+        : children.flatMap((child) => {
+            const input = inputs.get(child)
+            if (!input?.clipboard) return [child]
+            if (drawnInputs.has(input)) return []
+            drawnInputs.add(input)
+            return [inputRow(input, state, theme, redraw, true)]
+          })
     hover.endFrame()
-    return children
+    return result
   }
   const progress = projectProgress(
     children,

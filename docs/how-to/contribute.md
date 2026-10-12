@@ -79,6 +79,30 @@ Each process has a 120-second deadline, eight-provider-call limit, and a 2 MiB t
 Context logs stop at 1 MiB. Bounded ANSI failure evidence remains under `/tmp/pi-lens-*`.
 Source verification does not install the patched host or establish physical-terminal human acceptance.
 
+## Verify clipboard presentation
+
+Use a frozen source checkout containing clipboard patch `2572b39`; do not run against another writer's mutable checkout.
+The portable component tests cover native images, Markdown, cache invalidation, and regular-renderer graphics cleanup.
+Two additional contract tests load the source host's real normalizer when `PI_LENS_SOURCE_HOST` is set.
+
+```sh
+PI_LENS_SOURCE_HOST="/path/to/frozen/pi" bun test tests/clipboard.test.ts
+
+PI_LENS_SOURCE_HOST="/path/to/frozen/pi" \
+  PI_LENS_VOICE_EXTENSION="$HOME/.pi/agent/npm/node_modules/pi-live-codex/index.ts" \
+  python3 tests/clipboard-smoke.py
+```
+
+The terminal fixture inserts valid synthetic PNG bytes through the actual native editor's clipboard insertion method.
+Enter then exercises real submission snapshots, native bindings, persistence, and provider-message exclusion.
+It never acquires or overwrites the OS clipboard, assigns binding metadata, or reads the missing image path.
+Both modes cover collapsed previews, native global expansion in normal/clean, raw equality, and cold resume.
+Assertions distinguish native graphics payloads from visible text; Details must never add base64 dumps.
+Fullscreen additionally verifies image/Details peek anchoring and reload-stable image IDs.
+Active-branch reconciliation retains capture choices; an empty branch prunes those choices and runtime image IDs.
+The fixture uses the same deadlines, process-group cleanup, context limits, and output caps described above.
+Physical-terminal image appearance and real clipboard acquisition remain separate manual acceptance checks.
+
 ## Check installed voice compatibility
 
 If `pi-live-codex` is installed in Pi's normal npm directory:

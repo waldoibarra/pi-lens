@@ -1,5 +1,6 @@
 import { appendFileSync, existsSync, readFileSync, statSync, writeFileSync } from 'node:fs'
 import { registerInputOriginFixture } from './input-origin'
+import { registerClipboardFixture } from './clipboard-input'
 import {
   AssistantMessageComponent,
   CustomMessageComponent,
@@ -20,6 +21,8 @@ export default function fixture(pi: ExtensionAPI) {
   let turn = 0
   const origin = process.env.PI_LENS_FIXTURE_ORIGIN === '1'
   if (origin) registerInputOriginFixture(pi)
+  const clipboard = process.env.PI_LENS_FIXTURE_CLIPBOARD === '1'
+  if (clipboard) registerClipboardFixture(pi)
   const batch = process.env.PI_LENS_FIXTURE_BATCH === '1'
   const imageFixture = process.env.PI_LENS_FIXTURE_IMAGE === '1'
   if (imageFixture)
@@ -53,7 +56,7 @@ export default function fixture(pi: ExtensionAPI) {
         throw new Error('Fixture context log exceeded 1 MiB')
       appendFileSync('fixture-context.jsonl', snapshot)
       const stream = createAssistantMessageEventStream()
-      const calls = turn++ === 0 && !origin
+      const calls = turn++ === 0 && !origin && !clipboard
       const message: AssistantMessage = {
         role: 'assistant',
         api: model.api,
@@ -97,15 +100,17 @@ export default function fixture(pi: ExtensionAPI) {
             partial: message,
           })
         }
-        const text = origin
-          ? 'Origin fixture complete.'
-          : calls
-            ? imageFixture
-              ? 'Checking the fixture image.'
-              : 'Checking the fixture files.'
-            : imageFixture
-              ? 'Fixture complete. Image read finished.'
-              : 'Fixture complete. The failed command is intentional.'
+        const text = clipboard
+          ? 'Clipboard fixture complete.'
+          : origin
+            ? 'Origin fixture complete.'
+            : calls
+              ? imageFixture
+                ? 'Checking the fixture image.'
+                : 'Checking the fixture files.'
+              : imageFixture
+                ? 'Fixture complete. Image read finished.'
+                : 'Fixture complete. The failed command is intentional.'
         const textIndex = message.content.length
         message.content.push({ type: 'text', text: '' })
         stream.push({ type: 'text_start', contentIndex: textIndex, partial: message })

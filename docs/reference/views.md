@@ -1,7 +1,7 @@
 # Views and compatibility
 
 Pi Lens supports Pi **1.1.0**. Other host versions retain native rendering with a warning.
-Origin-aware input labels additionally require the local host identity patch described below.
+Origin-aware input labels and clipboard previews require the local host patches described below.
 
 ## Commands
 
@@ -18,22 +18,23 @@ View changes redraw the existing transcript. Normal shows a single step without 
 
 ## Expansion
 
-| Interaction                             | Result                                                                                    |
-| --------------------------------------- | ----------------------------------------------------------------------------------------- |
-| Click a clean fold                      | Lists its steps                                                                           |
-| Click `+N more` or `show fewer`         | Changes the normal fold's visible step count; the toggle stays after the first five steps |
-| Click any tool step                     | Opens its original expanded row, including successful reads and historical calls          |
-| Click an image read                     | Shows the native image first; `Details` opens the original technical read output          |
-| Click a question step                   | Shows the original row, plus recognized questions and answers when available              |
-| Click a voice request                   | Shows its original custom message                                                         |
-| Click an extension input                | Shows every original native input row, including skill contents and arguments             |
-| Native tool expansion, default `Ctrl+O` | Reveals original tool rows and custom-message contents                                    |
+| Interaction                             | Result                                                                                        |
+| --------------------------------------- | --------------------------------------------------------------------------------------------- |
+| Click a clean fold                      | Lists its steps                                                                               |
+| Click `+N more` or `show fewer`         | Changes the normal fold's visible step count; the toggle stays after the first five steps     |
+| Click any tool step                     | Opens its original expanded row, including successful reads and historical calls              |
+| Click an image read                     | Shows the native image first; `Details` opens the original technical read output              |
+| Click a clipboard image                 | Shows its captured native image; `Details` exposes original input, path, MIME, and byte count |
+| Click a question step                   | Shows the original row, plus recognized questions and answers when available                  |
+| Click a voice request                   | Shows its original custom message                                                             |
+| Click an extension input                | Shows every original native input row, including skill contents and arguments                 |
+| Native tool expansion, default `Ctrl+O` | Reveals original tool rows and custom-message contents                                        |
 
 Every Lens-collapsed tool step shows `▸` when closed and `▾` when open.
 Reads, running tools, empty results, and waiting or skipped questions remain expandable.
 Opening one step leaves its siblings folded. Click its header again to close it.
 Normal-view run totals are informational: they neither toggle nor highlight. Use `+N more` for hidden steps.
-Native global collapse closes individual tool, voice, and extension-input details; run-fold choices remain unchanged.
+Native global collapse closes individual tool, voice, clipboard, and extension-input details; run-fold choices remain unchanged.
 
 Clickable headers highlight on hover using the current theme's selected background.
 Hover requires fullscreen mode and terminal mouse-motion reporting; some multiplexer configurations suppress motion events.
@@ -111,10 +112,34 @@ Successful native image reads show the original image components before a second
 Their folded headers keep the submitted path, including directories when Pi received an ordinary file path.
 Rows with failed, partial, unsupported, or conversion-unavailable images retain Pi's native rendering.
 Unavailable image conversions retry after native invalidation; successful probes remain cached by width.
-Unproven image reads keep their path labels; Lens does not mint `[Image 1]` tokens without attachment identity.
+Unproven image reads keep their path labels; Lens never infers clipboard identity from read results.
 
 Unobserved historical calls use individual fallback rows without invented timing or run grouping.
 Lens cannot recover output the tool truncated or never stored, including unreported nested results.
+
+## Clipboard images
+
+Clipboard presentation requires the local host clipboard patch (`2572b39`), not published Pi 1.1.0 or identity-only hosts.
+Those older hosts retain original input text without clipboard previews.
+
+The host binds captured bytes and validated text ranges to the exact originating composer message.
+Lens displays `[Image N]` only at those ranges; numbering belongs to that message, not visible-row order.
+Typed paths, typed labels, Finder-copied files, and ordinary image reads remain unchanged.
+
+Previews start collapsed in normal and clean views. Click the image header to open its native image.
+`Details` reveals the complete original native input, original path, MIME type, and captured byte count.
+Captured bytes remain in native previews and session metadata, never added as visible base64 text.
+Lens renders captured bytes without reopening files, so deleted temporary files do not remove previews.
+Unsupported image protocols use Pi's native image fallback.
+Native global expansion exposes previews and details in both views, including regular-mode keyboard access.
+`/lens raw` remains the original native transcript, without added clipboard previews.
+
+Missing or invalid mappings retain original text and use the generic `Submitted clipboard image` label.
+Changed Markdown, reference-dependent documents, and unsafe link destinations also retain native text and generic labels.
+Other Markdown settings, transformers, code blocks, and references retain native rendering.
+Input and attachment IDs preserve disclosure choices across reload; branch reconciliation prunes abandoned choices.
+Stable native image IDs support resize, collapse, and Pi's own graphics cleanup.
+Clipboard attribution shares the originating input's single `You` footer.
 
 ## Action summaries
 

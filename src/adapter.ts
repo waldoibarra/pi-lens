@@ -1,4 +1,5 @@
 import { Container, type Component } from '@earendil-works/pi-tui'
+import * as Pi from '@earendil-works/pi-coding-agent'
 import {
   SkillInvocationMessageComponent,
   UserMessageComponent,
@@ -26,9 +27,48 @@ export function inputIdentity(value: unknown): InputIdentity | undefined {
   return { id: input.id, origin: input.origin }
 }
 
+export type ClipboardDisplay = {
+  readonly version: 1
+  readonly images: readonly {
+    readonly id: string
+    readonly number: number
+    readonly originalPath: string
+    readonly mimeType: string
+    readonly data: string
+  }[]
+  readonly spans: readonly {
+    readonly attachmentId: string
+    readonly contentIndex: number
+    readonly start: number
+    readonly end: number
+  }[]
+}
+
+type NormalizeInputDisplay = (
+  value: unknown,
+  message: InputBinding['message'],
+) => { clipboard?: ClipboardDisplay } | undefined
+
+// Namespace access avoids a missing named export on published and identity-only hosts.
+const normalizeInputDisplay = (
+  Pi as unknown as {
+    normalizeUserMessageInputDisplay?: NormalizeInputDisplay
+  }
+).normalizeUserMessageInputDisplay
+
+export function clipboardDisplay(
+  value: unknown,
+  message: InputBinding['message'],
+  normalize: NormalizeInputDisplay | undefined = normalizeInputDisplay,
+): ClipboardDisplay | undefined {
+  if (inputIdentity(value)?.origin !== 'composer' || typeof normalize !== 'function') return
+  return normalize(value, message)?.clipboard
+}
+
 export type InputBinding = {
   message: { role: 'user'; content: unknown; timestamp?: number }
   input?: InputIdentity
+  clipboard?: ClipboardDisplay
   entryId?: string
 }
 
@@ -57,6 +97,7 @@ export function inputBinding(row: Component): InputBinding | undefined {
   return {
     message,
     input: inputIdentity(binding.inputDisplay),
+    clipboard: clipboardDisplay(binding.inputDisplay, message),
     entryId: binding.entryId,
   }
 }
@@ -83,8 +124,9 @@ export function attachProjection(
   let nativeBypass = false
   const render = chat.render
   const mouse = chat.handleMouse
+  const invalidate = chat.invalidate
   const descriptors = new Map(
-    ['render', 'handleMouse'].map(
+    ['render', 'handleMouse', 'invalidate'].map(
       (key) => [key, Object.getOwnPropertyDescriptor(chat, key)] as const,
     ),
   )
@@ -132,14 +174,26 @@ export function attachProjection(
     }
     return mouse.call(chat, event)
   }
+  const wrappedInvalidate = () => {
+    invalidate.call(chat)
+    if (canProject() && projected) {
+      try {
+        projection.invalidate()
+      } catch (error) {
+        fail(error)
+      }
+    }
+  }
   chat.render = wrappedRender
   chat.handleMouse = wrappedMouse
+  chat.invalidate = wrappedInvalidate
   return () => {
     active = false
     projection.clear()
     for (const [key, ours] of [
       ['render', wrappedRender],
       ['handleMouse', wrappedMouse],
+      ['invalidate', wrappedInvalidate],
     ] as const) {
       if (chat[key] !== ours) continue
       const descriptor = descriptors.get(key)

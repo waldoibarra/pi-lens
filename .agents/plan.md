@@ -6,10 +6,81 @@ Ship a standalone Pi package matching Claude Code Lens's normal, clean, and raw 
 Waldo's Pi 1.1.0 workstation is the first supported environment.
 
 This file is authoritative. Read it before continuing implementation.
-The current UI corrections and host identity slice passed independent audit and lead-run checks.
-Clipboard tokens, identity consumption, native diagnostics, and send-now remain unfinished.
 Read [verification results](verification.md) before claiming acceptance.
-The current feedback and sibling delivery section below governs the next implementation work.
+The checkpoint below supersedes historical routing and status statements elsewhere in this plan.
+Earlier Astra child assignments are historical, not permission to repeat them.
+
+## Current pending work and activation checkpoint
+
+| Priority | Work                         | Verified state / remaining gate                                                                                                       |
+| -------- | ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| 1        | Usage discipline             | Shared policy reserves Astra/Fable for main chat; Pi strict worker allowlist rejects Astra before inference.                          |
+| 1        | Main model choice            | User-owned per session; weaker main models are allowed. No automatic parent-model change.                                             |
+| 1        | Activate host fixes          | Installed Pi remains stock 1.1.0. Offline-build approval and default-loader validation remain outstanding.                            |
+| 2        | Indent expanded thinking     | Newly requested two-column left inset under the heading; preserve bullets, wrapping, raw output, and peek anchoring. Not implemented. |
+| 2        | Human versus automated input | Source is implemented and audited. New composer input becomes You; extension input folds. Host activation is missing.                 |
+| 2        | Pasted-image tokens          | Host and Lens source are implemented and audited. Built-host activation and physical clipboard acceptance remain missing.             |
+| 2        | Queued notes after tools     | Native steeringMode is now all. Fresh offline SDK confirms it; reload applies it to the running host.                                 |
+| 3        | Queue clarity                | Draft work exists in the isolated send-now worktree; not independently accepted or merged.                                            |
+| 3        | Immediate send-now           | Not implemented. Native bash handoff, recovery, shortcuts, command/chord/subagent parity remain unfinished.                           |
+| 3        | Native diagnostics           | Source and real source-SDK/TUI checks passed. Compiled default-loader activation is still unverified.                                 |
+| 4        | Claude parity                | Local commit a3e074f passed audit and 26 tests. Physical rendering remains a manual gate; no release.                                 |
+| 4        | Portable dots provisioning   | Await locally accepted immutable sources and explicit deployment; no fabricated package version or local-only path pin.               |
+| 4        | Package release              | Blocked until user validation. Only Pi Lens GitHub source push is authorized.                                                         |
+
+No model workers may resume after the quota failure without operator approval.
+The padding change belongs to one small non-lead worker; no Astra/Fable implementation or review child.
+Configuration edits were checked without inference; self-review is not independent review.
+
+### Accepted corrections
+
+| ID  | Decision                                                               | Reason                                                                        |
+| --- | ---------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
+| D56 | Astra/Fable are main-chat-only, never workers or auxiliary probes      | User correction after quota exhaustion; supersedes earlier worker assignments |
+| D57 | The user chooses the main model, including weaker research models      | Session needs determine the main model                                        |
+| D58 | Use explicit, least-expensive capable worker selection by role         | Prevent lead inheritance and unnecessary premium-model work                   |
+| D59 | Bound repair rounds; stop dispatch after quota or timeout failures     | Avoid unattended retry and review loops                                       |
+| D60 | Use native all-message steering before considering another package     | Pi already accepts steering after the current tool batch                      |
+| D61 | Add a two-column inset to expanded thinking history                    | User screenshot shows bullets aligned with the disclosure header              |
+| D62 | Keep You for proven composer input and fold identified extension input | No fabricated human attribution or text-based classification                  |
+
+### Queue behavior and package decision
+
+Claude sends queued messages when the running tool calls finish, within the same turn.
+Slash and shell commands generally wait until that turn ends; immediate commands are exceptions.
+Pi Enter already uses steering; Alt+Enter uses follow-up delivery after current work.
+Its previous one-at-a-time default could delay later notes behind other queued entries.
+The tracked native steeringMode is now all; no package is needed for that change.
+
+The boundary is an outer tool batch, not an arbitrary operation inside a running Codemode script.
+Neither native steering nor this setting injects a message into an already-streaming model response.
+Immediate send-now is a separate feature; do not advertise an abort/dequeue shortcut as equivalent.
+Read [Claude's queue reference](https://code.claude.com/docs/en/interactive-mode#when-claude-code-sends-what-you-queued)
+before changing those semantics.
+
+A bounded package recheck rejected four candidates against mandatory requirements:
+pi-compact-tools 0.15.0, pi-clipboard 0.1.10, Archimedes image-paste 2.10.4, and pi-wait 0.1.5.
+The dotfiles Lens display spike owns the detailed source comparison. Nothing was installed.
+
+### Usage audit snapshot
+
+Canonical assistant usage entries were deduplicated by session file and entry ID.
+Artifact transcript copies and cumulative resume metadata were not summed.
+Previous no-session CLI children are absent, so this is not a complete account-wide total.
+
+| Scope                      | Model   | Responses | Uncached input |  Output | Reasoning subset | Cache reads |
+| -------------------------- | ------- | --------: | -------------: | ------: | ---------------: | ----------: |
+| Current child sessions     | GPT-5.5 |       702 |      2,099,268 | 217,848 |           78,816 |  64,320,256 |
+| Current child sessions     | Astra   |       839 |      3,865,375 | 334,580 |          105,939 |  88,578,304 |
+| Current main session       | Astra   |       243 |      1,532,188 | 264,360 |          204,334 |  70,845,056 |
+| Previous Lens main session | Astra   |       521 |      3,910,527 | 447,715 |          303,039 | 124,512,640 |
+
+Reasoning is included in output, not additional to it. These are token records, not provider quota charges.
+Recorded dispatch metadata contains 44 runs, including resumes: 33 Astra and 11 GPT-5.5.
+Astra handled 13 implementation, 17 audit, and 3 planning dispatches.
+The main sessions also consumed substantial reasoning and repeatedly processed large contexts.
+The orchestration mistake was premium worker use plus oversized scopes and repeated review/rework—not just tool output.
+No exact subscription quota conversion, reset time, or actual monetary charge is established.
 
 ## Behavior contract
 
@@ -407,8 +478,14 @@ Lead-owned decisions for remaining implementation:
 
 ### Delivery order and ownership
 
-One implementation writer per repository at a time. Read-only research may run concurrently.
+One implementation writer per worktree at a time. Read-only research may run concurrently.
+Independent host work may use isolated, frozen-base worktrees; the lead alone integrates their commits.
+This supersedes serial-per-repository scheduling for the independent diagnostics and send-now slices.
 The lead owns decisions, integration, git operations, publication, and workstation synchronization.
+
+| ID  | Decision                                                     | Reason                                                                               | Authority                         |
+| --- | ------------------------------------------------------------ | ------------------------------------------------------------------------------------ | --------------------------------- |
+| D55 | Isolate send-now development from the ordinary host checkout | Preserve verified identity/clipboard work during independent diagnostics integration | Lead; existing worktree mechanism |
 
 1. **Visible activity and compact spacing — Pi Lens, first delivery.**
    - Files: `src/progress.ts`, `src/presentation.ts`, `src/state.ts`, and progress/state/presentation/terminal tests.

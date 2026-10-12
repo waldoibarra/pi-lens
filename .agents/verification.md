@@ -226,7 +226,8 @@ Astra corrected the activity-tail, spacing, image-cache, and collapse-follow def
 Independent follow-up review confirmed convergence; the bounded UI scope is ready for a fix freeze.
 Host identity ingress isolation and lifecycle regressions also passed independent follow-up review.
 The consumer binding shape is frozen for the next Lens integration slice.
-Clipboard tokens, native diagnostics, and send-now remain separate unfinished slices.
+Clipboard and native diagnostic source slices now pass their independent audits and lead checks.
+Default-loader activation and send-now remain unfinished.
 
 ### Input provenance consumer
 
@@ -243,6 +244,29 @@ Direct/batch fixtures and fullscreen image checks also passed during this slice.
 This requires the local Pi identity patch e988874; it does not upgrade the installed Pi binary.
 Labels describe submission transport, not authenticated identity. Native subagent notification renderers remain unchanged.
 The bounded attribution scope is ready for a fix freeze.
+
+### Clipboard previews and native diagnostics
+
+Host clipboard identity is committed as `2572b39`; the public consumer contract passed independent freeze review.
+Lead checks passed 132 coding-agent tests, 206 editor tests, and full host checks.
+
+Lens clipboard rendering passed independent review and 174 lead-run tests with source-normalizer coverage.
+Both clipboard terminal modes passed with voice co-loaded, real native editor insertion, and cold resume.
+The fixture supplies synthetic captured bytes; it does not read or replace the OS clipboard.
+Ordinary paths remain unchanged; only validated spans show numbered image tokens.
+Previews use captured bytes. Secondary details show path, MIME, and byte count, never a base64 text dump.
+Unsupported Markdown contexts retain native rendering and generic capture labels.
+
+Native diagnostic routing passed independent review after guarded error-formatting corrections.
+Lead checks passed 63 host tests, 30 runner unit tests, 46 in-process tests, and both source integration tests.
+Four root-TUI runs verified native notifications, successful children, resizing, and exact draft preservation.
+The source fixture injects the real host SDK through the factory seam; default-loader activation remains unverified.
+Pi's offline build was requested from the user because the default loader requires compiled SDK exports.
+No build or installed-Pi replacement is implied by source checks.
+
+Send-now development is isolated from the ordinary host checkout.
+Its first worker timed out after 30 minutes; partial queue-foundation changes remain unmerged.
+Retained-session recovery is finishing the bounded foundation before further handoff and shortcut work.
 
 ## Fixture resource recovery
 

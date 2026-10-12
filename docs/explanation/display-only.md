@@ -32,7 +32,9 @@ Teardown restores only methods still owned by Lens, preserving wrappers installe
 Pi extensions can send user-role messages. That role does not prove human authorship.
 Published Pi 1.1.0 input events lack reliable message-to-row correlation; its inputs keep neutral `Input` labels.
 The local identity patch adds native `binding` metadata with exact `message`, `inputDisplay`, optional `entryId`, and row `part`.
-Lens validates this structure without importing new host exports, preserving compatibility with the pinned published peers.
+Lens validates identity structurally, preserving compatibility with the pinned published peers.
+Clipboard normalization uses optional namespace access to the host helper, never a missing named runtime export.
+The helper receives the binding's exact message; only normalized composer captures enter the clipboard renderer.
 
 Only exact message-object bindings group skill and argument rows; text and timestamps never establish identity.
 Composer-origin rows receive `You`; extension-origin rows receive an expandable `Extension input` header.
@@ -41,9 +43,24 @@ Extension origin identifies transport, not a particular extension, agent, or aut
 Hand-edited session metadata is not an authentication boundary.
 
 Input disclosures use stable host input IDs, independently of Lens's bounded observed-message cache.
-Expansion delegates to every original native row; raw and global expansion bypass the projection.
+Expansion delegates to every original native row; raw always bypasses the projection.
+Global expansion retains native rows except clipboard groups, whose sidecar previews need Lens rendering.
 Lens neither duplicates subagent custom-message renderers nor hides native requests and approvals.
 Live-voice controls and editors remain outside this boundary.
+
+## Captured images stay separate from paths
+
+`src/clipboard.ts` projects only host-validated UTF-16 spans and renders captured bytes through native `Image` components.
+It never scans paths, infers attachment identity, or reads image files.
+Equal-column placeholders preserve generated labels through native Markdown parsing, wrapping, and syntax styling.
+Original transformers run before projection; changed documents retain native output rather than guessed offsets.
+Reference definitions, marker-bearing OSC links, invisible destinations, and unsupported mappings retain native rendering and generic labels.
+Secondary details expose original native rows, path, MIME type, and byte count, never base64 dumps.
+Captured bytes stay intact in native previews and session metadata.
+
+The adapter forwards native invalidation to projected components, including hidden image caches.
+Session-local native image IDs survive reload; active-branch reconciliation removes abandoned choices and IDs.
+Pi's renderer owns graphics placement and cleanup when previews disappear.
 
 ## State stays outside model context
 

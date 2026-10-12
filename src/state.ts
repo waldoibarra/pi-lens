@@ -1,6 +1,7 @@
 import { parseSkillBlock } from '@earendil-works/pi-coding-agent'
 import type { LensView } from './domain'
-import { inputIdentity } from './adapter'
+import { clipboardDisplay, inputIdentity, type InputBinding } from './adapter'
+import { clipboardKey } from './clipboard'
 
 export type RecordValue = Record<string, unknown>
 export const record = (value: unknown): RecordValue =>
@@ -50,6 +51,7 @@ function progressKeys(message: RecordValue): string[] {
 export class LensState {
   view: LensView = 'normal'
   open = new Set<string>()
+  clipboardImageIds = new Map<string, number>()
   calls = new Map<string, CallStamp>()
   users: UserStamp[] = []
   assistants = new Set<number>()
@@ -110,6 +112,7 @@ export class LensState {
     const ids = new Set<string>()
     const voiceIds = new Set<string>()
     const inputIds = new Set<string>()
+    const clipboardKeys = new Set<string>()
     const progressIds = new Set<string>()
     const addVoice = (value: unknown) => {
       const message = record(value)
@@ -120,6 +123,16 @@ export class LensState {
     for (const entry of entries) {
       const rawEntry = record(entry)
       const input = inputIdentity(rawEntry.inputDisplay)
+      if (rawEntry.type === 'message' && record(rawEntry.message).role === 'user' && input) {
+        const clipboard = clipboardDisplay(
+          rawEntry.inputDisplay,
+          rawEntry.message as InputBinding['message'],
+        )
+        for (const image of clipboard?.images ?? []) {
+          clipboardKeys.add(clipboardKey(input.id, image.id))
+          clipboardKeys.add(clipboardKey(input.id, image.id, true))
+        }
+      }
       if (
         rawEntry.type === 'message' &&
         record(rawEntry.message).role === 'user' &&
@@ -142,6 +155,8 @@ export class LensState {
     this.assistants = new Set([...this.assistants].filter((at) => times.has(at)))
     this.prose = new Set([...this.prose].filter((at) => times.has(at)))
     for (const id of this.calls.keys()) if (!ids.has(id)) this.calls.delete(id)
+    for (const key of this.clipboardImageIds.keys())
+      if (!clipboardKeys.has(key)) this.clipboardImageIds.delete(key)
     for (const key of [...this.open]) {
       const separator = key.indexOf(':')
       if (separator < 0) continue
@@ -149,6 +164,8 @@ export class LensState {
       const id = key.slice(separator + 1)
       if ((type === 'step' || type === 'run') && !ids.has(id)) this.open.delete(key)
       if (type === 'image-details' && !ids.has(id)) this.open.delete(key)
+      if ((type === 'clipboard' || type === 'clipboard-details') && !clipboardKeys.has(key))
+        this.open.delete(key)
       if (type === 'voice' && !voiceIds.has(id)) this.open.delete(key)
       if (type === 'input' && !inputIds.has(id)) this.open.delete(key)
       if (type === 'progress' && !progressIds.has(key)) this.open.delete(key)

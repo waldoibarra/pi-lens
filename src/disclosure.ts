@@ -71,6 +71,8 @@ function clearIndividualOpens(state: LensState): void {
       key.startsWith('step:') ||
       key.startsWith('voice:') ||
       key.startsWith('image-details:') ||
+      key.startsWith('clipboard:') ||
+      key.startsWith('clipboard-details:') ||
       key.startsWith('input:')
     )
       state.open.delete(key)
