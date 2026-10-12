@@ -1,4 +1,4 @@
-"""Prove provenance using a patched source CLI, real submissions, and cold session resume."""
+"""Prove provenance using a patched CLI, real submissions, and cold session resume."""
 import json
 import os
 from pathlib import Path
@@ -9,6 +9,7 @@ from terminal_fixture import TerminalFixture
 
 ROOT = Path(__file__).resolve().parents[1]
 HOST = Path(os.environ.get("PI_LENS_SOURCE_HOST", ROOT.parent / "pi")).resolve()
+COMPILED_CLI = os.environ.get("PI_LENS_COMPILED_CLI")
 TEXT = b"Inspect subagent updates above.\nORIGIN_FULL_BODY"
 # Independent literal expectations catch identically corrupted composer/extension records.
 EXPECTED_USER_CONTENTS = [
@@ -17,6 +18,59 @@ EXPECTED_USER_CONTENTS = [
     [{"type": "text", "text": '<skill name="origin-demo" location="/fixture/SKILL.md">\n'
       'ORIGIN_SKILL_BODY\n</skill>\n\nORIGIN_SKILL_ARGUMENTS'}],
 ]
+
+
+API_ENV_KEYS = [
+    "ANTHROPIC_API_KEY",
+    "ANTHROPIC_OAUTH_TOKEN",
+    "OPENAI_API_KEY",
+    "GEMINI_API_KEY",
+    "GROQ_API_KEY",
+    "CEREBRAS_API_KEY",
+    "XAI_API_KEY",
+    "OPENROUTER_API_KEY",
+    "ZAI_API_KEY",
+    "MISTRAL_API_KEY",
+    "MINIMAX_API_KEY",
+    "MINIMAX_CN_API_KEY",
+    "AI_GATEWAY_API_KEY",
+    "OPENCODE_API_KEY",
+    "COPILOT_GITHUB_TOKEN",
+    "GH_TOKEN",
+    "GITHUB_TOKEN",
+    "HF_TOKEN",
+    "GOOGLE_APPLICATION_CREDENTIALS",
+    "GOOGLE_CLOUD_PROJECT",
+    "GCLOUD_PROJECT",
+    "GOOGLE_CLOUD_LOCATION",
+    "AWS_PROFILE",
+    "AWS_ACCESS_KEY_ID",
+    "AWS_SECRET_ACCESS_KEY",
+    "AWS_SESSION_TOKEN",
+    "AWS_REGION",
+    "AWS_DEFAULT_REGION",
+    "AWS_BEARER_TOKEN_BEDROCK",
+    "AWS_CONTAINER_CREDENTIALS_RELATIVE_URI",
+    "AWS_CONTAINER_CREDENTIALS_FULL_URI",
+    "AWS_WEB_IDENTITY_TOKEN_FILE",
+    "AZURE_OPENAI_API_KEY",
+    "AZURE_OPENAI_BASE_URL",
+    "AZURE_OPENAI_RESOURCE_NAME",
+]
+
+
+def build_command(mode, workspace):
+    args = ["--offline", "--no-extensions", "--no-skills", "--no-prompt-templates",
+            "--no-context-files", "--no-mcp", "--no-approve", "--tui-mode", mode,
+            "--session-dir", str(workspace / "sessions"), "-e", str(ROOT / "src/index.ts"),
+            "-e", str(ROOT / "tests/fixtures/provider.ts"), "--model",
+            "lens-fixture/gpt-6-astra-fixture"]
+    if COMPILED_CLI:
+        cli = Path(COMPILED_CLI).expanduser()
+        assert cli.is_absolute(), "PI_LENS_COMPILED_CLI must be an explicit absolute path"
+        assert cli.is_file(), f"PI_LENS_COMPILED_CLI does not exist: {cli}"
+        return ["node", str(cli), *args]
+    return [str(HOST / "pi-test.sh"), "--no-env", *args]
 
 
 def run(mode):
@@ -28,11 +82,9 @@ def run(mode):
         env = dict(os.environ, PI_CODING_AGENT_DIR=str(profile), PI_OFFLINE="1",
                    PI_SKIP_VERSION_CHECK="1", PI_TELEMETRY="0", TERM="xterm-256color",
                    PI_LENS_FIXTURE_ORIGIN="1")
-        command = [str(HOST / "pi-test.sh"), "--no-env", "--offline", "--no-extensions",
-                   "--no-skills", "--no-prompt-templates", "--no-context-files", "--no-mcp",
-                   "--no-approve", "--tui-mode", mode, "--session-dir", str(workspace / "sessions"),
-                   "-e", str(ROOT / "src/index.ts"), "-e", str(ROOT / "tests/fixtures/provider.ts"),
-                   "--model", "lens-fixture/gpt-6-astra-fixture"]
+        for key in [*API_ENV_KEYS, "NODE_OPTIONS", "NODE_PATH"]:
+            env.pop(key, None)
+        command = build_command(mode, workspace)
         voice = os.environ.get("PI_LENS_VOICE_EXTENSION")
         if voice:
             command.extend(["-e", voice])
@@ -100,7 +152,8 @@ def run(mode):
         finally:
             fixture.close()
             Path(f"/tmp/pi-lens-origin-{mode}-resume.ansi").write_bytes(fixture.transcript)
-        print(f"PASS {mode}: actual source bindings, composer You, extension folds, skills, raw/global, cold resume")
+        host_kind = "compiled" if COMPILED_CLI else "source"
+        print(f"PASS {mode}: actual {host_kind} bindings, composer You, extension folds, skills, raw/global, cold resume")
 
 
 if __name__ == "__main__":

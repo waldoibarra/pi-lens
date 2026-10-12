@@ -62,7 +62,7 @@ Its dependencies and generated model data must already be hydrated; this fixture
 
 ```sh
 PI_LENS_SOURCE_HOST="/path/to/patched/pi" \
-  PI_LENS_VOICE_EXTENSION="$HOME/.pi/agent/npm/node_modules/pi-live-codex/index.ts" \
+  PI_LENS_VOICE_EXTENSION="/path/to/pi-live-codex/index.ts" \
   python3 tests/input-origin-smoke.py
 ```
 
@@ -77,6 +77,14 @@ The fullscreen check also asserts that opening a fold preserves its header posit
 Both loader fixtures use disposable profiles and bounded process groups, terminated and killed during cleanup.
 Each process has a 120-second deadline, eight-provider-call limit, and a 2 MiB terminal-output cap.
 Context logs stop at 1 MiB. Bounded ANSI failure evidence remains under `/tmp/pi-lens-*`.
+To prove an already-built patched bundle without the source resolver, pass its explicit CLI path:
+
+```sh
+PI_LENS_COMPILED_CLI="/path/to/pi/packages/coding-agent/dist/bundle/cli.js" \
+  python3 tests/input-origin-smoke.py
+```
+
+The compiled entry runs with `node` and receives the same fixture arguments.
 Source verification does not install the patched host or establish physical-terminal human acceptance.
 
 ## Verify clipboard presentation
