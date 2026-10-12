@@ -199,7 +199,7 @@ The previous session and its late child artifacts were recovered before implemen
 
 Fresh lead checks now establish:
 
-- Pi Lens: 138 tests pass, including the installed voice visualizer; typecheck and documentation lint pass.
+- Pi Lens checkpoint `e43dacb`: 138 tests pass, including voice; typecheck, lint, and GitHub CI pass.
 - Direct and batch terminal fixtures pass both modes with voice co-loaded and unchanged model-visible context.
 - Image-first fullscreen fixture passes with voice co-loaded; regular image interaction remains explicitly unverified.
 - The earlier Details fixture failure came from correctly pinned content expanding below the viewport.
@@ -216,8 +216,8 @@ Pi's ignored model data was hydrated from the matching installed `pi-ai@1.1.0` p
 Its native model-data validator passed. No model selection, billing, generated source, or installed runtime changed.
 The Pi source launcher reports `1.1.0` without credentials or model calls.
 
-The public Pi Lens GitHub repository now exists with user authorization.
-Source push follows verification; package publication, release tags, and releases remain blocked pending local validation.
+Public Pi Lens source was pushed as `e43dacb` with user authorization; its GitHub Check workflow passed.
+Package publication, release tags, and releases remain blocked pending local validation.
 Installed Pi remains unpatched. A verified local pi-subagents build is installed for the next process restart.
 Its rollback tarball and manifests stay under the native profile's private `local-trials` directory.
 The existing long-running session retains its previously loaded runner; no active workers were interrupted.
@@ -226,7 +226,35 @@ Astra corrected the activity-tail, spacing, image-cache, and collapse-follow def
 Independent follow-up review confirmed convergence; the bounded UI scope is ready for a fix freeze.
 Host identity ingress isolation and lifecycle regressions also passed independent follow-up review.
 The consumer binding shape is frozen for the next Lens integration slice.
-Clipboard tokens, Lens provenance consumption, native diagnostics, and send-now remain separate unfinished slices.
+Clipboard tokens, native diagnostics, and send-now remain separate unfinished slices.
+
+### Input provenance consumer
+
+The consumer passed final independent review after native skill-control and fixture corrections.
+Fresh lead verification passed 149 tests with voice and both source-host terminal modes.
+Direct/batch fixtures and fullscreen image checks also passed during this slice.
+
+- Exact bindings label composer messages You; extension submissions collapse as Extension input.
+- RPC, legacy, malformed, and unsupported origins stay visible and neutral.
+- Full native contents, skill controls, raw/global recovery, reload, and branch pruning remain available.
+- Real source-host fixtures verify literal provider payloads and persistent cold resume without injected bindings.
+- Timer-start failure tests verify process termination and closed terminal descriptors.
+
+This requires the local Pi identity patch e988874; it does not upgrade the installed Pi binary.
+Labels describe submission transport, not authenticated identity. Native subagent notification renderers remain unchanged.
+The bounded attribution scope is ready for a fix freeze.
+
+## Fixture resource recovery
+
+An exploratory warning-provider prototype left an unbounded context log and filled local storage.
+The lead removed two confirmed disposable logs, approximately 65 GiB and 911 MiB.
+No prototype process remained; available storage recovered to 67 GiB.
+Repository changes were preserved. The failed clipboard task had made no code changes.
+
+The warning fixture now caps provider calls, context size, terminal output, and runtime.
+Cleanup terminates its owned process group. Fresh regular/fullscreen checks passed after hardening.
+Both interrupted implementation tasks resumed through native retained-session recovery.
+A shared-instruction safeguard was proposed separately; it has not been applied without approval.
 
 ## Next iteration
 

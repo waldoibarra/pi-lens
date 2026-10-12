@@ -1,17 +1,13 @@
 """Exercise the installed Pi loader and TUI in a credential-free disposable profile."""
-import fcntl
 import json
 import os
 from pathlib import Path
-import pty
 import re
-import select
 import shutil
-import struct
-import subprocess
 import tempfile
-import termios
-import time
+import sys
+sys.dont_write_bytecode = True
+from terminal_fixture import TerminalFixture
 
 ROOT = Path(__file__).resolve().parents[1]
 ANSI_RE = re.compile(rb'(?:\x1b\][^\x07]*(?:\x07|\x1b\\)|\x1b\[[0-?]*[ -/]*[@-~]|\x1b[()][A-Za-z0-9])')
@@ -39,8 +35,6 @@ def run(mode, enabled=True):
         if image:
             settings["terminal"] = {"images": "kitty"}
         (profile / "settings.json").write_text(json.dumps(settings))
-        master, slave = pty.openpty()
-        fcntl.ioctl(slave, termios.TIOCSWINSZ, struct.pack("HHHH", 55, 110, 0, 0))
         env = dict(os.environ, PI_CODING_AGENT_DIR=str(profile), PI_OFFLINE="1",
                    PI_SKIP_VERSION_CHECK="1", PI_TELEMETRY="0", TERM="xterm-256color")
         extension = os.environ.get("PI_LENS_EXTENSION", str(ROOT / "src/index.ts"))
@@ -58,47 +52,12 @@ def run(mode, enabled=True):
         voice = os.environ.get("PI_LENS_VOICE_EXTENSION")
         if voice:
             command[1:1] = ["-e", voice]
-        process = subprocess.Popen(command, stdin=slave, stdout=slave, stderr=slave,
-                                   cwd=workspace, env=env, start_new_session=True)
-        os.close(slave)
-        transcript = bytearray()
+        fixture = TerminalFixture(command, workspace, env)
+        master = fixture.master
+        wait_for = fixture.wait
 
-        def wait_for(needle, timeout=25):
-            begin = time.monotonic()
-            chunk = bytearray()
-            while time.monotonic() - begin < timeout:
-                if select.select([master], [], [], 0.1)[0]:
-                    try:
-                        data = os.read(master, 65536)
-                    except OSError:
-                        break
-                    chunk.extend(data)
-                    transcript.extend(data)
-                    # Answer terminal capability requests so startup never waits for a person.
-                    if b"\x1b[c" in data:
-                        os.write(master, b"\x1b[?1;2c")
-                    if needle.encode() in chunk:
-                        return bytes(chunk)
-                if process.poll() is not None:
-                    break
-            raise AssertionError(f"{mode}: did not observe {needle!r}\n{chunk.decode(errors='replace')[-9000:]}")
-
-        def wait_for_file(name, timeout=25):
-            begin = time.monotonic()
-            while time.monotonic() - begin < timeout:
-                if (workspace / name).exists():
-                    return
-                if select.select([master], [], [], 0.1)[0]:
-                    try:
-                        data = os.read(master, 65536)
-                    except OSError:
-                        break
-                    transcript.extend(data)
-                    if b"\x1b[c" in data:
-                        os.write(master, b"\x1b[?1;2c")
-                if process.poll() is not None:
-                    break
-            raise AssertionError(f"{mode}: did not observe file {name!r}")
+        def wait_for_file(name):
+            fixture.wait(filename=name)
 
         try:
             initial = wait_for("Fixture complete.")
@@ -174,15 +133,9 @@ def run(mode, enabled=True):
             print(f"PASS {mode}: loader, folds, progress, live tail, native thinking, errors, modes, voice, expansion, reload")
             return contexts
         finally:
-            process.terminate()
-            try:
-                process.wait(timeout=5)
-            except subprocess.TimeoutExpired:
-                process.kill()
-                process.wait()
-            os.close(master)
-            # Synthetic output only. Keep failure evidence outside the repository.
-            Path(f"/tmp/pi-lens-{mode}-smoke.ansi").write_bytes(transcript)
+            fixture.close()
+            # Synthetic output only, capped at 2 MiB by the fixture.
+            Path(f"/tmp/pi-lens-{mode}-smoke.ansi").write_bytes(fixture.transcript)
 
 
 if __name__ == "__main__":

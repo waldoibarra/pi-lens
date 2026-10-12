@@ -55,6 +55,30 @@ No build step is required: Pi loads the TypeScript entry point.
 
 8. Update the relevant documentation in the same change.
 
+## Verify patched-host input provenance
+
+Published Pi 1.1.0 cannot prove input origin. Use a source checkout containing the identity patch (`e988874`).
+Its dependencies and generated model data must already be hydrated; this fixture performs no installation or network access.
+
+```sh
+PI_LENS_SOURCE_HOST="/path/to/patched/pi" \
+  PI_LENS_VOICE_EXTENSION="$HOME/.pi/agent/npm/node_modules/pi-live-codex/index.ts" \
+  python3 tests/input-origin-smoke.py
+```
+
+Omit the voice variable when that extension is unavailable. The default source-host path is the sibling `../pi`.
+The fixture runs the actual `pi-test.sh --no-env` CLI in fullscreen and regular modes.
+It submits identical composer and extension text through real host paths, then sends a multi-row skill input.
+Assertions inspect host-created bindings, `You`, extension folds, native recovery, reload, and persistent cold resume.
+No fixture assigns binding metadata. The deterministic provider makes no external model calls.
+Input IDs must survive resume; origin metadata must remain absent from provider messages.
+The fullscreen check also asserts that opening a fold preserves its header position and upper screen rows.
+
+Both loader fixtures use disposable profiles and bounded process groups, terminated and killed during cleanup.
+Each process has a 120-second deadline, eight-provider-call limit, and a 2 MiB terminal-output cap.
+Context logs stop at 1 MiB. Bounded ANSI failure evidence remains under `/tmp/pi-lens-*`.
+Source verification does not install the patched host or establish physical-terminal human acceptance.
+
 ## Check installed voice compatibility
 
 If `pi-live-codex` is installed in Pi's normal npm directory:

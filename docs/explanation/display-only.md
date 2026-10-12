@@ -14,7 +14,8 @@ Voice delegation messages belong to the transcript, so Lens can fold them withou
 Pi's public tool-renderer API handles individual tools.
 Mixed-tool runs and message footers also require access to neighboring transcript components.
 
-Transcript integration lives in `src/adapter.ts`; host data conversion lives in `src/pi-data.ts`.
+Transcript integration and guarded native input bindings live in `src/adapter.ts`.
+Tool data conversion lives in `src/pi-data.ts`.
 `src/progress.ts` projects thinking regions while retaining native prose, warnings, and message markers.
 It exposes current thinking separately; presentation appends one inert activity summary after every transcript child.
 `src/spacing.ts` removes verified `Spacer(1)` shell padding, never whitespace emitted by content renderers.
@@ -29,9 +30,20 @@ Teardown restores only methods still owned by Lens, preserving wrappers installe
 ## Input role is not authorship
 
 Pi extensions can send user-role messages. That role does not prove human authorship.
-Pi 1.1.0 input events expose source, but lack reliable message and rendered-row correlation.
-Lens therefore uses neutral `Input` labels and never classifies authorship from message wording.
-Distinct automation folds require an identity-bound origin contract; they are not implemented for ambiguous user-role input.
+Published Pi 1.1.0 input events lack reliable message-to-row correlation; its inputs keep neutral `Input` labels.
+The local identity patch adds native `binding` metadata with exact `message`, `inputDisplay`, optional `entryId`, and row `part`.
+Lens validates this structure without importing new host exports, preserving compatibility with the pinned published peers.
+
+Only exact message-object bindings group skill and argument rows; text and timestamps never establish identity.
+Composer-origin rows receive `You`; extension-origin rows receive an expandable `Extension input` header.
+RPC, unknown, malformed, conflicting, and missing origins remain neutral and visible.
+Extension origin identifies transport, not a particular extension, agent, or authenticated sender.
+Hand-edited session metadata is not an authentication boundary.
+
+Input disclosures use stable host input IDs, independently of Lens's bounded observed-message cache.
+Expansion delegates to every original native row; raw and global expansion bypass the projection.
+Lens neither duplicates subagent custom-message renderers nor hides native requests and approvals.
+Live-voice controls and editors remain outside this boundary.
 
 ## State stays outside model context
 

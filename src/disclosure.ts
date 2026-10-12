@@ -67,7 +67,12 @@ export function setNativeExpanded(row: NativeDisclosureRow, expanded: boolean): 
 
 function clearIndividualOpens(state: LensState): void {
   for (const key of [...state.open]) {
-    if (key.startsWith('step:') || key.startsWith('voice:') || key.startsWith('image-details:'))
+    if (
+      key.startsWith('step:') ||
+      key.startsWith('voice:') ||
+      key.startsWith('image-details:') ||
+      key.startsWith('input:')
+    )
       state.open.delete(key)
   }
 }

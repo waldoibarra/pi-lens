@@ -1,4 +1,65 @@
 import { Container, type Component } from '@earendil-works/pi-tui'
+import {
+  SkillInvocationMessageComponent,
+  UserMessageComponent,
+} from '@earendil-works/pi-coding-agent'
+
+export type InputIdentity = {
+  id: string
+  origin: 'composer' | 'extension' | 'rpc' | 'unknown'
+}
+
+/** Structural compatibility with the patched host; Pi 1.1.0 exports no identity helpers. */
+export function inputIdentity(value: unknown): InputIdentity | undefined {
+  if (!value || typeof value !== 'object') return undefined
+  const display = value as { version?: unknown; input?: unknown }
+  if (display.version !== 1 || !display.input || typeof display.input !== 'object') return undefined
+  const input = display.input as { id?: unknown; origin?: unknown }
+  if (typeof input.id !== 'string' || !input.id) return undefined
+  if (
+    input.origin !== 'composer' &&
+    input.origin !== 'extension' &&
+    input.origin !== 'rpc' &&
+    input.origin !== 'unknown'
+  )
+    return undefined
+  return { id: input.id, origin: input.origin }
+}
+
+export type InputBinding = {
+  message: { role: 'user'; content: unknown; timestamp?: number }
+  input?: InputIdentity
+  entryId?: string
+}
+
+/** Only native input components can establish a binding, never a matching text or timestamp. */
+export function inputBinding(row: Component): InputBinding | undefined {
+  if (!(row instanceof UserMessageComponent || row instanceof SkillInvocationMessageComponent))
+    return undefined
+  const raw = (row as unknown as { binding?: unknown }).binding
+  if (!raw || typeof raw !== 'object') return undefined
+  const binding = raw as {
+    message?: unknown
+    inputDisplay?: unknown
+    entryId?: unknown
+    part?: unknown
+  }
+  if (!binding.message || typeof binding.message !== 'object') return undefined
+  const message = binding.message as InputBinding['message']
+  if (message.role !== 'user') return undefined
+  if (
+    row instanceof SkillInvocationMessageComponent
+      ? binding.part !== 'skill'
+      : binding.part !== 'body' && binding.part !== 'skill-arguments'
+  )
+    return undefined
+  if (binding.entryId !== undefined && typeof binding.entryId !== 'string') return undefined
+  return {
+    message,
+    input: inputIdentity(binding.inputDisplay),
+    entryId: binding.entryId,
+  }
+}
 
 /** Pi 1.1 keeps header, resources, and chat in the first document container. */
 export function findTranscript(tui: unknown): Container | undefined {

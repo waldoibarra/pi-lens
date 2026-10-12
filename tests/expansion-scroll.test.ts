@@ -2,6 +2,7 @@ import { expect, test } from 'bun:test'
 import {
   AssistantMessageComponent,
   CustomMessageComponent,
+  UserMessageComponent,
   ToolExecutionComponent,
   createReadToolDefinition,
   initTheme,
@@ -64,7 +65,7 @@ function terminalFixture() {
   return { terminal, input: (data: string) => input(data) }
 }
 
-test.each(['tool', 'image', 'voice', 'thinking'] as const)(
+test.each(['tool', 'image', 'voice', 'thinking', 'input'] as const)(
   'opening real Lens %s details keeps its header on screen',
   (kind) => {
     initTheme('dark', false)
@@ -113,6 +114,16 @@ test.each(['tool', 'image', 'voice', 'thinking'] as const)(
         isError: false,
       })
       row = tool
+    } else if (kind === 'input') {
+      const content = `${sentinel}\n\n${body}`
+      row = new UserMessageComponent(content)
+      Object.defineProperty(row, 'binding', {
+        value: {
+          message: Object.freeze({ role: 'user', content, timestamp: 100 }),
+          inputDisplay: { version: 1, input: { id: 'input', origin: 'extension' } },
+          part: 'body',
+        },
+      })
     } else if (kind === 'voice') {
       row = new CustomMessageComponent({
         role: 'custom',

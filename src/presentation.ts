@@ -4,6 +4,7 @@ import {
   CustomMessageComponent,
   ToolExecutionComponent,
   UserMessageComponent,
+  SkillInvocationMessageComponent,
   type Theme,
 } from '@earendil-works/pi-coding-agent'
 import {
@@ -30,6 +31,7 @@ import { LensState, record, textOf } from './state'
 import { hoverFor, hoverHeader } from './hover'
 import { projectProgress } from './progress'
 import { compactMessageShell, isMessageShell, isMessageSpacer } from './spacing'
+import { inputBinding, type InputBinding } from './adapter'
 import {
   disclosureBody,
   hasNativeImageReadContent,
@@ -159,9 +161,9 @@ function footer(
   model: string | undefined,
   theme: Theme,
   role: 'user' | 'reply' | 'tools' = 'tools',
+  inputLabel = 'Input',
 ): Component {
-  // Pi user-role messages do not carry reliable authorship; never infer a human sender from the role.
-  const label = `${role === 'user' ? 'Input' : modelName(model)}${at === undefined ? '' : ` · ${formatTime(at, null)}`}`
+  const label = `${role === 'user' ? inputLabel : modelName(model)}${at === undefined ? '' : ` · ${formatTime(at, null)}`}`
   return line(label, theme, role === 'reply' ? 'reply' : 'muted', true)
 }
 
@@ -337,6 +339,84 @@ function voiceRow(
   return open ? stack(header, disclosureBody(disclosureRow, key, state, redraw)) : header
 }
 
+type InputGroup = InputBinding & { rows: Component[] }
+
+function inputGroups(children: Component[]): Map<Component, InputGroup> {
+  const byMessage = new Map<object, InputGroup>()
+  const byRow = new Map<Component, InputGroup>()
+  const byId = new Map<string, InputGroup>()
+  const conflicted = new Set<InputGroup>()
+  for (const row of children) {
+    const binding = inputBinding(row)
+    if (!binding) continue
+    let group = byMessage.get(binding.message)
+    if (!group) {
+      group = { ...binding, rows: [] }
+      byMessage.set(binding.message, group)
+      if (binding.input) {
+        const other = byId.get(binding.input.id)
+        if (other) {
+          conflicted.add(other)
+          conflicted.add(group)
+        } else byId.set(binding.input.id, group)
+      }
+    } else if (
+      group.input?.id !== binding.input?.id ||
+      group.input?.origin !== binding.input?.origin ||
+      group.entryId !== binding.entryId
+    ) {
+      conflicted.add(group)
+    }
+    group.rows.push(row)
+    byRow.set(row, group)
+  }
+  for (const group of conflicted) group.input = undefined
+  // Unexpected interleaving must not move native rows across prose, tools, or approvals.
+  for (const group of byMessage.values()) {
+    const first = children.indexOf(group.rows[0])
+    const last = children.indexOf(group.rows.at(-1)!)
+    const span = children.slice(first, last + 1)
+    if (span.some((row) => byRow.get(row) !== group && !isMessageSpacer(row))) {
+      for (const row of group.rows) byRow.delete(row)
+    } else {
+      group.rows = span
+      for (const row of span) byRow.set(row, group)
+    }
+  }
+  return byRow
+}
+
+function inputRow(
+  group: InputGroup,
+  state: LensState,
+  theme: Theme,
+  redraw: () => void,
+): Component {
+  const at = typeof group.message.timestamp === 'number' ? group.message.timestamp : undefined
+  if (group.input?.origin !== 'extension')
+    return stack(
+      ...group.rows,
+      footer(at, undefined, theme, 'user', group.input?.origin === 'composer' ? 'You' : 'Input'),
+    )
+  const key = `input:${group.input.id}`
+  const open = state.open.has(key)
+  const preview = textOf(group.message.content).trim().split('\n')[0].replace(/\s+/g, ' ')
+  const label = line(`${open ? '▾' : '▸'} Extension input${preview ? ` · ${preview}` : ''}`, theme)
+  const skill = group.rows.find((row) => row instanceof SkillInvocationMessageComponent)
+  const header = skill
+    ? disclosureHeader(label, key, skill as unknown as NativeDisclosureRow, state, redraw, theme)
+    : clickable(label, key, state, redraw, theme)
+  if (!open) return header
+  return stack(
+    header,
+    ...group.rows.map((row) =>
+      row instanceof SkillInvocationMessageComponent
+        ? disclosureBody(row as unknown as NativeDisclosureRow, key, state, redraw)
+        : row,
+    ),
+  )
+}
+
 /** A display copy: source children, messages, and native components retain their identity. */
 export function projectTranscript(
   children: Component[],
@@ -351,6 +431,7 @@ export function projectTranscript(
   const groups = new Map<string, ToolRow[]>()
   const groupFor = new Map<Component, string>()
   const disclosures: DisclosureEntry[] = []
+  const inputs = inputGroups(children)
   const nativeImageFallbacks = new Set<Component>()
   // Notices and user-visible prose remain at their original positions.
   let boundary = 0
@@ -398,7 +479,18 @@ export function projectTranscript(
         ['error', 'aborted', 'length'].includes(String(message.stopReason))
       )
         boundary++
-    } else if (child instanceof UserMessageComponent || child instanceof CustomMessageComponent) {
+    } else if (
+      child instanceof UserMessageComponent ||
+      child instanceof SkillInvocationMessageComponent ||
+      child instanceof CustomMessageComponent
+    ) {
+      const input = inputs.get(child)?.input
+      if (child instanceof SkillInvocationMessageComponent && input?.origin === 'extension')
+        disclosures.push({
+          row: child as unknown as NativeDisclosureRow,
+          key: `input:${input.id}`,
+          managed: true,
+        })
       const id = voiceId(child)
       if (id)
         disclosures.push({ row: child as NativeDisclosureRow, key: `voice:${id}`, managed: true })
@@ -419,15 +511,7 @@ export function projectTranscript(
     () => hover.clear(),
   )
 
-  // Bind identical prompts in order, from the newest observed message backward.
-  const userTimes = new Map<Component, number>()
-  let cursor = state.users.length - 1
-  for (let i = children.length - 1; i >= 0 && cursor >= 0; i--) {
-    const child = children[i]
-    if (!(child instanceof UserMessageComponent)) continue
-    const text = (child as unknown as { text: string }).text
-    if (text === state.users[cursor].text) userTimes.set(child, state.users[cursor--].at)
-  }
+  const drawnInputs = new Set<InputGroup>()
   const drawn = new Set<string>()
   const result = children.flatMap((child, index) => {
     if (
@@ -448,10 +532,14 @@ export function projectTranscript(
     }
     if (child instanceof CustomMessageComponent)
       return [voiceRow(child, state, theme, redraw) ?? compactMessageShell(child)]
-    if (child instanceof UserMessageComponent) {
-      const at = userTimes.get(child)
-      return [at === undefined ? child : stack(child, footer(at, undefined, theme, 'user'))]
+    const input = inputs.get(child)
+    if (input) {
+      if (drawnInputs.has(input)) return []
+      drawnInputs.add(input)
+      return [inputRow(input, state, theme, redraw)]
     }
+    if (child instanceof UserMessageComponent || child instanceof SkillInvocationMessageComponent)
+      return [stack(child, footer(undefined, undefined, theme, 'user'))]
     if (child instanceof AssistantMessageComponent) {
       const message = record((child as unknown as { lastMessage?: unknown }).lastMessage)
       if (

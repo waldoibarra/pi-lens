@@ -1,4 +1,5 @@
-import { appendFileSync, writeFileSync } from 'node:fs'
+import { appendFileSync, existsSync, readFileSync, statSync, writeFileSync } from 'node:fs'
+import { registerInputOriginFixture } from './input-origin'
 import {
   AssistantMessageComponent,
   CustomMessageComponent,
@@ -17,6 +18,8 @@ import {
 /** Local deterministic provider: no transport, credentials, audio, or external model calls. */
 export default function fixture(pi: ExtensionAPI) {
   let turn = 0
+  const origin = process.env.PI_LENS_FIXTURE_ORIGIN === '1'
+  if (origin) registerInputOriginFixture(pi)
   const batch = process.env.PI_LENS_FIXTURE_BATCH === '1'
   const imageFixture = process.env.PI_LENS_FIXTURE_IMAGE === '1'
   if (imageFixture)
@@ -37,9 +40,20 @@ export default function fixture(pi: ExtensionAPI) {
       },
     ],
     streamSimple(model, context) {
-      appendFileSync('fixture-context.jsonl', JSON.stringify(context.messages) + '\n')
+      const stored = existsSync('fixture-context.jsonl')
+        ? statSync('fixture-context.jsonl').size
+        : 0
+      if (stored > 1024 * 1024) throw new Error('Fixture context log exceeded 1 MiB')
+      const previousCalls = stored
+        ? readFileSync('fixture-context.jsonl', 'utf8').trimEnd().split('\n').length
+        : 0
+      if (turn >= 8 || previousCalls >= 8) throw new Error('Fixture provider call limit exceeded')
+      const snapshot = JSON.stringify(context.messages) + '\n'
+      if (stored + Buffer.byteLength(snapshot) > 1024 * 1024)
+        throw new Error('Fixture context log exceeded 1 MiB')
+      appendFileSync('fixture-context.jsonl', snapshot)
       const stream = createAssistantMessageEventStream()
-      const calls = turn++ === 0
+      const calls = turn++ === 0 && !origin
       const message: AssistantMessage = {
         role: 'assistant',
         api: model.api,
@@ -83,13 +97,15 @@ export default function fixture(pi: ExtensionAPI) {
             partial: message,
           })
         }
-        const text = calls
-          ? imageFixture
-            ? 'Checking the fixture image.'
-            : 'Checking the fixture files.'
-          : imageFixture
-            ? 'Fixture complete. Image read finished.'
-            : 'Fixture complete. The failed command is intentional.'
+        const text = origin
+          ? 'Origin fixture complete.'
+          : calls
+            ? imageFixture
+              ? 'Checking the fixture image.'
+              : 'Checking the fixture files.'
+            : imageFixture
+              ? 'Fixture complete. Image read finished.'
+              : 'Fixture complete. The failed command is intentional.'
         const textIndex = message.content.length
         message.content.push({ type: 'text', text: '' })
         stream.push({ type: 'text_start', contentIndex: textIndex, partial: message })

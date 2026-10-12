@@ -1,5 +1,6 @@
 import { parseSkillBlock } from '@earendil-works/pi-coding-agent'
 import type { LensView } from './domain'
+import { inputIdentity } from './adapter'
 
 export type RecordValue = Record<string, unknown>
 export const record = (value: unknown): RecordValue =>
@@ -108,6 +109,7 @@ export class LensState {
     const times = new Set<number>()
     const ids = new Set<string>()
     const voiceIds = new Set<string>()
+    const inputIds = new Set<string>()
     const progressIds = new Set<string>()
     const addVoice = (value: unknown) => {
       const message = record(value)
@@ -117,6 +119,13 @@ export class LensState {
     }
     for (const entry of entries) {
       const rawEntry = record(entry)
+      const input = inputIdentity(rawEntry.inputDisplay)
+      if (
+        rawEntry.type === 'message' &&
+        record(rawEntry.message).role === 'user' &&
+        input?.origin === 'extension'
+      )
+        inputIds.add(input.id)
       if (rawEntry.type === 'custom_message') addVoice(rawEntry)
       const message = record(rawEntry.message ?? entry)
       if (typeof message.timestamp === 'number') times.add(message.timestamp)
@@ -141,6 +150,7 @@ export class LensState {
       if ((type === 'step' || type === 'run') && !ids.has(id)) this.open.delete(key)
       if (type === 'image-details' && !ids.has(id)) this.open.delete(key)
       if (type === 'voice' && !voiceIds.has(id)) this.open.delete(key)
+      if (type === 'input' && !inputIds.has(id)) this.open.delete(key)
       if (type === 'progress' && !progressIds.has(key)) this.open.delete(key)
     }
     this.turn = String(this.users.at(-1)?.at ?? 'initial')

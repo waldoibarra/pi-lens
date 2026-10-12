@@ -2,6 +2,10 @@
 
 Use a local checkout while Pi Lens is unpublished.
 
+Published Pi 1.1.0 supports Lens folds but lacks input-origin bindings.
+`You` labels and extension-input folding additionally require the local Pi identity patch; installing Lens alone is insufficient.
+Read [Views and compatibility](../reference/views.md#labels-and-retention) before relying on those labels.
+
 ## Load it for one invocation
 
 From another project, pass the checkout directory:

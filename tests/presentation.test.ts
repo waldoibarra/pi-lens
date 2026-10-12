@@ -713,7 +713,7 @@ test('user-role labels remain neutral while reply labels use observed model meta
   state.observe(message)
   const users = [new UserMessageComponent('Again'), new UserMessageComponent('Again')]
   const text = render([...users, new AssistantMessageComponent(message as never)], state).text
-  expect(text.match(/Input · /g)).toHaveLength(2)
+  expect(text.match(/Input/g)).toHaveLength(2)
   expect(text).not.toContain('You ·')
   expect(text).toContain('GPT 6 Astra ·')
 })
@@ -731,7 +731,7 @@ test('unverified automation-like input stays visible without invented attributio
   for (const view of ['normal', 'clean'] as const) {
     state.view = view
     const text = render([row], state).text
-    expect(text).toContain('Input ·')
+    expect(text).toContain('Input')
     expect(text).toContain('Full instruction remains visible.')
     expect(text).not.toContain('You ·')
     expect(text).not.toContain('Agent update')

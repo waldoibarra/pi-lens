@@ -1,6 +1,7 @@
 # Views and compatibility
 
 Pi Lens supports Pi **1.1.0**. Other host versions retain native rendering with a warning.
+Origin-aware input labels additionally require the local host identity patch described below.
 
 ## Commands
 
@@ -25,13 +26,14 @@ View changes redraw the existing transcript. Normal shows a single step without 
 | Click an image read                     | Shows the native image first; `Details` opens the original technical read output          |
 | Click a question step                   | Shows the original row, plus recognized questions and answers when available              |
 | Click a voice request                   | Shows its original custom message                                                         |
+| Click an extension input                | Shows every original native input row, including skill contents and arguments             |
 | Native tool expansion, default `Ctrl+O` | Reveals original tool rows and custom-message contents                                    |
 
 Every Lens-collapsed tool step shows `▸` when closed and `▾` when open.
 Reads, running tools, empty results, and waiting or skipped questions remain expandable.
 Opening one step leaves its siblings folded. Click its header again to close it.
 Normal-view run totals are informational: they neither toggle nor highlight. Use `+N more` for hidden steps.
-Native global collapse closes individual tool and voice details; run-fold choices remain unchanged.
+Native global collapse closes individual tool, voice, and extension-input details; run-fold choices remain unchanged.
 
 Clickable headers highlight on hover using the current theme's selected background.
 Hover requires fullscreen mode and terminal mouse-motion reporting; some multiplexer configurations suppress motion events.
@@ -77,10 +79,25 @@ Keyboard access uses `/lens raw` and Pi's thinking toggle, normally `Ctrl+T`.
 Normal shows one result fact per step when available. Clean omits facts but keeps delegated-agent model labels.
 Known failures receive a plain explanation; normal also shows the first meaningful raw error line.
 
-Observed inputs, replies, and runs receive right-aligned timestamps.
-Input footers say `Input`, not `You`: Pi 1.1.0 lacks reliable authorship bound to displayed user-role messages.
-This includes ordinary human prompts; Lens does not guess which inputs came from automation.
-Unknown inputs remain fully visible, including in clean view. Native identified custom notices retain their own presentation.
+Observed replies and runs receive right-aligned timestamps. Bound native inputs use their exact message timestamp.
+Published Pi 1.1.0 lacks native input-origin bindings; its inputs remain visible with neutral `Input` footers.
+Lens does not match text, timestamps, or submission order to infer an input's origin.
+
+The local Pi identity patch (`e988874`) binds input metadata to native message components.
+With that patched host, normal and clean views use these rules:
+
+| Bound origin                               | Presentation                                                                 |
+| ------------------------------------------ | ---------------------------------------------------------------------------- |
+| Composer                                   | Visible native input with one `You` footer                                   |
+| Extension                                  | Collapsed `Extension input` header; click to reveal all original native rows |
+| RPC, unknown, missing, or invalid metadata | Visible native input with a neutral `Input` footer                           |
+
+Labels identify submission transport, not authenticated human or agent identity.
+Header previews use original content; wording never determines origin or identifies a particular extension.
+Skill contents and arguments share one disclosure only when bound to the exact same message object.
+Host input IDs preserve disclosure choices across rebuilt rows and reload; branch changes prune abandoned choices.
+Raw view and native global expansion recover the original rows, including regular-mode keyboard access.
+Unknown inputs remain fully visible in both views. Native custom notices retain their own presentation.
 Model labels come from the corresponding response, never the currently selected model.
 Reply model labels use a warm accent with light/dark variants; folded tool-run labels remain muted grey.
 Recognized model families use readable names, such as `GPT 6 Astra`, in reply, run, and delegated-agent labels.
@@ -118,6 +135,8 @@ When metadata is absent, Lens uses `Ran a tool batch` rather than guessing the s
 
 Live-voice request previews use the first text line. Expansion restores the entire native message.
 Unknown custom messages, including warnings and permission prompts, remain untouched.
+New `pi-subagents` wake inputs sent through `sendUserMessage` fold when the patched host binds extension origin.
+Historical unbound wakes remain visible. Existing subagent custom-message folds and requests retain their native renderer.
 
 ## Parity limits
 
