@@ -1,0 +1,44 @@
+{
+  "name": "pi-lens",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Lens-style transcript folds, plain errors, and expandable details for Pi.",
+  "type": "module",
+  "license": "MIT",
+  "keywords": [
+    "pi-package"
+  ],
+  "engines": {
+    "node": ">=22.19.0"
+  },
+  "files": [
+    "src",
+    "docs",
+    "README.md",
+    "LICENSE"
+  ],
+  "pi": {
+    "extensions": [
+      "./src/index.ts"
+    ]
+  },
+  "scripts": {
+    "test": "bun test",
+    "typecheck": "tsc --noEmit",
+    "lint": "prettier --check . && markdownlint-cli2 '**/*.md'",
+    "format": "prettier --write .",
+    "check": "bun run typecheck && bun test && bun run lint"
+  },
+  "peerDependencies": {
+    "@earendil-works/pi-coding-agent": "*",
+    "@earendil-works/pi-tui": "*"
+  },
+  "devDependencies": {
+    "@earendil-works/pi-coding-agent": "1.1.0",
+    "@earendil-works/pi-tui": "1.1.0",
+    "@types/bun": "latest",
+    "typescript": "^5.9.3",
+    "prettier": "^3.6.2",
+    "markdownlint-cli2": "^0.23.3"
+  }
+}
