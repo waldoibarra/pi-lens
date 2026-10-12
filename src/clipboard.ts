@@ -276,7 +276,6 @@ export function clipboardInput(
       secondaryDetails,
       ...(detailsOpen
         ? [
-            ...rows,
             new Text(
               `Original path: ${image.originalPath}\nMIME type: ${image.mimeType}\nCaptured size: ${Buffer.byteLength(image.data, 'base64')} bytes`,
               1,

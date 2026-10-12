@@ -55,7 +55,7 @@ It never scans paths, infers attachment identity, or reads image files.
 Equal-column placeholders preserve generated labels through native Markdown parsing, wrapping, and syntax styling.
 Original transformers run before projection; changed documents retain native output rather than guessed offsets.
 Reference definitions, marker-bearing OSC links, invisible destinations, and unsupported mappings retain native rendering and generic labels.
-Secondary details expose original native rows, path, MIME type, and byte count, never base64 dumps.
+Secondary details expose attachment path, MIME type, and byte count, never repeated native input or base64 dumps.
 Captured bytes stay intact in native previews and session metadata.
 
 The adapter forwards native invalidation to projected components, including hidden image caches.

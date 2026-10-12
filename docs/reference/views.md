@@ -18,17 +18,17 @@ View changes redraw the existing transcript. Normal shows a single step without 
 
 ## Expansion
 
-| Interaction                             | Result                                                                                        |
-| --------------------------------------- | --------------------------------------------------------------------------------------------- |
-| Click a clean fold                      | Lists its steps                                                                               |
-| Click `+N more` or `show fewer`         | Changes the normal fold's visible step count; the toggle stays after the first five steps     |
-| Click any tool step                     | Opens its original expanded row, including successful reads and historical calls              |
-| Click an image read                     | Shows the native image first; `Details` opens the original technical read output              |
-| Click a clipboard image                 | Shows its captured native image; `Details` exposes original input, path, MIME, and byte count |
-| Click a question step                   | Shows the original row, plus recognized questions and answers when available                  |
-| Click a voice request                   | Shows its original custom message                                                             |
-| Click an extension input                | Shows every original native input row, including skill contents and arguments                 |
-| Native tool expansion, default `Ctrl+O` | Reveals original tool rows and custom-message contents                                        |
+| Interaction                             | Result                                                                                    |
+| --------------------------------------- | ----------------------------------------------------------------------------------------- |
+| Click a clean fold                      | Lists its steps                                                                           |
+| Click `+N more` or `show fewer`         | Changes the normal fold's visible step count; the toggle stays after the first five steps |
+| Click any tool step                     | Opens its original expanded row, including successful reads and historical calls          |
+| Click an image read                     | Shows the native image first; `Details` opens the original technical read output          |
+| Click a clipboard image                 | Shows its captured native image; `Details` exposes path, MIME, and byte count metadata    |
+| Click a question step                   | Shows the original row, plus recognized questions and answers when available              |
+| Click a voice request                   | Shows its original custom message                                                         |
+| Click an extension input                | Shows every original native input row, including skill contents and arguments             |
+| Native tool expansion, default `Ctrl+O` | Reveals original tool rows and custom-message contents                                    |
 
 Every Lens-collapsed tool step shows `▸` when closed and `▾` when open.
 Reads, running tools, empty results, and waiting or skipped questions remain expandable.
@@ -127,7 +127,7 @@ Lens displays `[Image N]` only at those ranges; numbering belongs to that messag
 Typed paths, typed labels, Finder-copied files, and ordinary image reads remain unchanged.
 
 Previews start collapsed in normal and clean views. Click the image header to open its native image.
-`Details` reveals the complete original native input, original path, MIME type, and captured byte count.
+`Details` reveals attachment metadata: original path, MIME type, and captured byte count.
 Captured bytes remain in native previews and session metadata, never added as visible base64 text.
 Lens renders captured bytes without reopening files, so deleted temporary files do not remove previews.
 Unsupported image protocols use Pi's native image fallback.

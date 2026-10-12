@@ -177,6 +177,35 @@ clipboardTest.each(['normal', 'clean'] as const)(
   },
 )
 
+clipboardTest.each(['normal', 'clean'] as const)(
+  'global expansion shows one projected body and metadata per attachment in %s',
+  (mode) => {
+    const content = `typed ${path} + ${path}`
+    const data = metadata(
+      [image(), image('capture-b', 2)],
+      [
+        { attachmentId: 'capture-a', contentIndex: 0, start: 6, end: 6 + path.length },
+        {
+          attachmentId: 'capture-b',
+          contentIndex: 0,
+          start: content.length - path.length,
+          end: content.length,
+        },
+      ],
+    )
+    const f = fixture(content, data)
+    f.state.view = mode
+    const text = f.render(true).lines.map(stripTerminalSequences).join('\n')
+    const count = (needle: string) => text.split(needle).length - 1
+    expect(count(`typed [Image 1] + [Image 2]`)).toBe(1)
+    expect(count('Original path:')).toBe(2)
+    expect(count('MIME type:')).toBe(2)
+    expect(count('Captured size:')).toBe(2)
+    expect(count(path)).toBe(2)
+    expect(text.replace(/\s/g, '').includes(png)).toBe(false)
+  },
+)
+
 test('global expansion keeps multi-megabyte capture bytes out of visible text', () => {
   // A valid PNG with a large ancillary text chunk, not a base64-only image-shaped fixture.
   const original = Buffer.from(png, 'base64')

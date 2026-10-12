@@ -142,23 +142,25 @@ export function registerClipboardFixture(pi: ExtensionAPI) {
             !text.replace(/\s/g, '').includes(clipboardPng),
             'Captured base64 must not become visible text',
           )
+          const count = (needle: string) => text.split(needle).length - 1
+          const metadataCount =
+            stage === 'global' ? 2 : ['details', 'reload'].includes(stage) ? 1 : 0
           assert.equal(
-            text.includes(`Captured size: ${Buffer.byteLength(clipboardPng, 'base64')} bytes`),
-            ['details', 'reload', 'global'].includes(stage),
+            count(`Captured size: ${Buffer.byteLength(clipboardPng, 'base64')} bytes`),
+            metadataCount,
           )
+          assert.equal(count('Original path:'), metadataCount)
+          assert.equal(count('MIME type:'), metadataCount)
           if (stage === 'raw') {
             assert.deepEqual(lines, Container.prototype.render.call(chat, 110))
             assert.equal(text.split(clipboardPath).length - 1, 3)
             assert.ok(!text.includes('You ·'))
           } else {
-            assert.ok(
-              text.includes(`typed ${clipboardPath} [Image 1] captures [Image 1] + [Image 2]`),
+            assert.equal(
+              count(`typed ${clipboardPath} [Image 1] captures [Image 1] + [Image 2]`),
+              1,
             )
             assert.equal((text.match(/You ·/g) ?? []).length, 1)
-            assert.equal(
-              text.includes('Original path:'),
-              ['details', 'reload', 'global'].includes(stage),
-            )
           }
           assert.equal(JSON.stringify(ctx.sessionManager.getBranch()), before)
           writeFileSync(
