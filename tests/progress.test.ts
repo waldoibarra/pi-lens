@@ -8,6 +8,7 @@ import {
 } from '@earendil-works/pi-coding-agent'
 import {
   Container,
+  Markdown,
   MouseRegion,
   Text,
   truncateToWidth,
@@ -93,6 +94,38 @@ function render(children: Component[], state = new LensState(), width = 80) {
   const lines = container.render(width)
   return { map, container, lines, text: plain(lines), redraws: () => redraws }
 }
+
+test('expanded thinking history is inset two columns under its disclosure heading', () => {
+  const state = new LensState()
+  state.open.add('progress:90:0')
+  const row = assistant(90, [
+    { type: 'thinking', thinking: '# First update\nBody line\n\n# Second update' },
+  ]).row
+
+  const lines = plain(render([row], state).lines).split('\n')
+  const headerIndex = lines.findIndex((line) => line.includes('▾ Thinking updates · Second update'))
+  expect(headerIndex).toBeGreaterThanOrEqual(0)
+  expect(lines[headerIndex].startsWith('▾ Thinking updates')).toBe(true)
+  expect(lines[headerIndex + 1]).toBe('  • First update')
+  expect(lines[headerIndex + 2].trimEnd()).toBe('    Body line')
+  expect(lines[headerIndex + 3]).toBe('  • Second update')
+})
+
+test('expanded thinking inset preserves wrapping at narrow widths', () => {
+  const state = new LensState()
+  state.open.add('progress:91:0')
+  const row = assistant(91, [
+    { type: 'thinking', thinking: '# Alpha beta gamma delta epsilon zeta' },
+  ]).row
+
+  const lines = plain(render([row], state, 14).lines).split('\n')
+  const bulletIndex = lines.findIndex((line) => line.includes('• Alpha'))
+  expect(bulletIndex).toBeGreaterThanOrEqual(0)
+  expect(lines[bulletIndex].startsWith('  • ')).toBe(true)
+  expect(lines[bulletIndex + 1].startsWith('    ')).toBe(true)
+  for (const line of lines.slice(bulletIndex, bulletIndex + 3))
+    expect(visibleWidth(line)).toBeLessThanOrEqual(14)
+})
 
 test('thinking after visible prose starts a separate segment within one assistant row', () => {
   const state = new LensState()
@@ -405,10 +438,11 @@ test('expanded thinking labels wrap without losing long Unicode trailing sentine
 
   const lines = render([row], state, 32).lines
   const firstLabel = lines.findIndex((line) => line.includes('• Expanded labels'))
-  const lastLabel = lines.findIndex((line) => line.includes(sentinel))
+  const lastLabel = lines.findIndex((line) => line.includes('部🧪END'))
   expect(firstLabel).toBeGreaterThanOrEqual(0)
   expect(lastLabel).toBeGreaterThan(firstLabel)
-  expect(plain(lines)).toContain(sentinel)
+  expect(plain(lines)).toContain('尾')
+  expect(plain(lines)).toContain('部🧪END')
   for (const line of lines.slice(firstLabel, lastLabel + 1)) {
     expect(line).not.toContain('\x1b[')
     expect(visibleWidth(line)).toBeLessThanOrEqual(32)
@@ -460,7 +494,7 @@ test('tight bullets survive native cache hits without rerunning whole-document t
   expect(calls).toHaveLength(count)
   expect(
     calls.every(
-      (call) => call.text === source && call.type === 'assistant-thinking' && call.width === 78,
+      (call) => call.text === source && call.type === 'assistant-thinking' && call.width === 76,
     ),
   ).toBe(true)
 })
@@ -483,19 +517,19 @@ test('unheaded structured thinking retains its first source line when expanded',
       id: 955,
       source: '```ts\nconsole.log("CODE_FIRST_SENTINEL")\n```\nAFTER_CODE_SENTINEL',
       retainedNative: (lines: string[]) =>
-        lines.some((line) => line.startsWith('  AFTER_CODE_SENTINEL')),
+        lines.some((line) => line.startsWith('    AFTER_CODE_SENTINEL')),
     },
     {
       id: 956,
       source: '- LIST_FIRST_SENTINEL\n  continuation',
       retainedNative: (lines: string[]) =>
-        lines.some((line) => line.startsWith('  - LIST_FIRST_SENTINEL')),
+        lines.some((line) => line.startsWith('    - LIST_FIRST_SENTINEL')),
     },
     {
       id: 957,
       source: '> BLOCKQUOTE_FIRST_SENTINEL\n> continuation',
       retainedNative: (lines: string[]) =>
-        lines.some((line) => line.startsWith('  │ BLOCKQUOTE_FIRST_SENTINEL')),
+        lines.some((line) => line.startsWith('    │ BLOCKQUOTE_FIRST_SENTINEL')),
     },
   ]
 
@@ -647,4 +681,81 @@ test('header activation toggles persisted state and redraws', () => {
   expect(result?.handled).toBe(true)
   expect(state.open.has('progress:1200:0')).toBe(true)
   expect(projected.redraws()).toBe(1)
+})
+
+test('expanded thinking inset routes mouse coordinates through projected content', () => {
+  const markdownPrototype = Markdown.prototype as unknown as Component & {
+    handleMouse?: Component['handleMouse']
+  }
+  const original = markdownPrototype.handleMouse
+  const events: Parameters<NonNullable<Component['handleMouse']>>[0][] = []
+  markdownPrototype.handleMouse = (event) => {
+    events.push(event)
+    return { handled: true }
+  }
+
+  try {
+    const state = new LensState()
+    state.open.add('progress:1210:0')
+    const row = assistant(1210, [
+      { type: 'thinking', thinking: '# Routed inset\nMarkdown body target' },
+    ]).row
+    const projected = render([row], state, 80)
+    const bodyY = projected.lines.findIndex((line) => line.includes('Markdown body target'))
+    expect(bodyY).toBeGreaterThanOrEqual(0)
+
+    const content = projected.container.handleMouse({
+      type: 'click',
+      button: 'left',
+      x: 4,
+      y: bodyY,
+      screenX: 4,
+      screenY: bodyY,
+      width: 80,
+      height: projected.lines.length,
+      shift: false,
+      alt: false,
+      ctrl: false,
+    } as never)
+    expect(content?.handled).toBe(true)
+    expect(events.at(-1)).toMatchObject({ x: 0, y: 0, width: 76 })
+
+    events.length = 0
+    const gutter = projected.container.handleMouse({
+      type: 'click',
+      button: 'left',
+      x: 1,
+      y: bodyY,
+      screenX: 1,
+      screenY: bodyY,
+      width: 80,
+      height: projected.lines.length,
+      shift: false,
+      alt: false,
+      ctrl: false,
+    } as never)
+    expect(gutter).toBeUndefined()
+    expect(events).toHaveLength(0)
+
+    const narrow = render([row], state, 2)
+    const narrowBodyY = narrow.lines.length - 1
+    expect(narrowBodyY).toBeGreaterThanOrEqual(0)
+    narrow.container.handleMouse({
+      type: 'click',
+      button: 'left',
+      x: 1,
+      y: narrowBodyY,
+      screenX: 1,
+      screenY: narrowBodyY,
+      width: 2,
+      height: narrow.lines.length,
+      shift: false,
+      alt: false,
+      ctrl: false,
+    } as never)
+    expect(events.at(-1)).toMatchObject({ x: 1, width: 2 })
+  } finally {
+    if (original) markdownPrototype.handleMouse = original
+    else delete markdownPrototype.handleMouse
+  }
 })

@@ -98,6 +98,33 @@ function stack(children: Component[]): Component {
   return container
 }
 
+class Inset implements Component {
+  constructor(
+    private readonly child: Component,
+    private readonly columns: number,
+  ) {}
+
+  render(width: number): string[] {
+    if (width <= this.columns) return this.child.render(width)
+    const prefix = ' '.repeat(this.columns)
+    return this.child.render(width - this.columns).map((line) => `${prefix}${line}`)
+  }
+
+  invalidate(): void {
+    this.child.invalidate?.()
+  }
+
+  handleMouse(event: Parameters<NonNullable<Component['handleMouse']>>[0]) {
+    if (event.width <= this.columns) return this.child.handleMouse?.(event)
+    if (event.x < this.columns) return undefined
+    return this.child.handleMouse?.({
+      ...event,
+      x: event.x - this.columns,
+      width: event.width - this.columns,
+    })
+  }
+}
+
 class CompactThinkingUpdate implements Component {
   constructor(
     private readonly title: string,
@@ -533,7 +560,7 @@ class ProgressAssistantDisplay implements Component {
       if (group.anchor.row !== this.info) continue
       const header = this.headerComponents.get(group.key)!
       projected[group.anchorIndex] = this.state.open.has(group.key)
-        ? stack([header, ...fullHistory(group)])
+        ? stack([header, new Inset(stack(fullHistory(group)), 2)])
         : header
     }
     content.children = projected

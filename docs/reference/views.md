@@ -55,17 +55,17 @@ Each activity segment has one explicitly labeled thinking disclosure showing its
 Visible prose and tool calls separate history segments; later activity stays below earlier work.
 Live-voice delegation starts a separate request. Earlier headings remain available inside that segment's expanded history.
 
-| State             | Display                                                                                     |
-| ----------------- | ------------------------------------------------------------------------------------------- |
-| Closed            | `Thinking updates` plus the latest update and available count                               |
-| Open              | Tight bulleted updates in chronological order, with details under each update               |
-| New update        | Heading changes in place until visible prose starts a new segment                           |
-| Thinking active   | One noninteractive `Thinking…` summary at the transcript tail, after notices and other work |
-| Tools active      | The tail names observed running actions, including steps beyond the five-step preview       |
-| Activity finishes | The active tail disappears; historical disclosures remain interactive                       |
+| State             | Display                                                                                         |
+| ----------------- | ----------------------------------------------------------------------------------------------- |
+| Closed            | `Thinking updates` plus the latest update and available count                                   |
+| Open              | Two-column inset, tight bulleted updates in chronological order, with details under each update |
+| New update        | Heading changes in place until visible prose starts a new segment                               |
+| Thinking active   | One noninteractive `Thinking…` summary at the transcript tail, after notices and other work     |
+| Tools active      | The tail names observed running actions, including steps beyond the five-step preview           |
+| Activity finishes | The active tail disappears; historical disclosures remain interactive                           |
 
 Before thinking content arrives, Pi's native working indicator provides activity feedback.
-Paragraph and code whitespace within an update is preserved.
+Paragraph and code whitespace within an update is preserved inside the inset.
 Historical thinking remains expandable during streaming; opened details stay visible.
 Verified native message-boundary spacers disappear in normal and clean views.
 Markdown whitespace, tool output, image allocation, and unknown native spacing remain unchanged.
