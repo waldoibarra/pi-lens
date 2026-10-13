@@ -11,7 +11,7 @@ Read [Views and compatibility](../reference/views.md#labels-and-retention) befor
 From another project, pass the pinned Git source:
 
 ```sh
-pi -e git:github.com/waldoibarra/pi-lens@v0.1.1
+pi -e git:github.com/waldoibarra/pi-lens@v0.2.0
 ```
 
 Closing Pi unloads the extension. `/lens raw` restores native presentation without closing the session.
@@ -21,7 +21,7 @@ Closing Pi unloads the extension. `/lens raw` restores native presentation witho
 If your Pi settings are not managed elsewhere, run:
 
 ```sh
-pi install git:github.com/waldoibarra/pi-lens@v0.1.1
+pi install git:github.com/waldoibarra/pi-lens@v0.2.0
 ```
 
 Restart Pi or run `/reload`. Enter `/lens` to verify the command is available.
@@ -29,7 +29,7 @@ Restart Pi or run `/reload`. Enter `/lens` to verify the command is available.
 To remove it:
 
 ```sh
-pi remove git:github.com/waldoibarra/pi-lens@v0.1.1
+pi remove git:github.com/waldoibarra/pi-lens@v0.2.0
 ```
 
 Restart Pi or run `/reload` again.

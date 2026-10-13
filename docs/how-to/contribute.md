@@ -146,7 +146,7 @@ Owned processes are bounded and terminated on success or failure.
 
 ## Publish a release
 
-Pi Lens is distributed as a Pi Git package, currently `git:github.com/waldoibarra/pi-lens@v0.1.1`.
+Pi Lens is distributed as a Pi Git package, currently `git:github.com/waldoibarra/pi-lens@v0.2.0`.
 Keep `package.json` private; the unscoped npm name belongs to another project.
 Versioned tags are immutable. Only the `latest` release alias may move.
 
@@ -166,15 +166,15 @@ Versioned tags are immutable. Only the `latest` release alias may move.
 3. Commit the release and create its annotated version tag, for example:
 
    ```sh
-   git tag -a v0.1.1 -m "Pi Lens 0.1.1"
-   git push --atomic origin main refs/tags/v0.1.1
+   git tag -a v0.2.0 -m "Pi Lens 0.2.0"
+   git push --atomic origin main refs/tags/v0.2.0
    ```
 
 4. Confirm CI passes on the tagged commit, then publish its GitHub Release with compatibility notes.
 5. Promote `latest` only after the versioned release is published and verified:
 
    ```sh
-   git tag latest 'v0.1.1^{commit}'
+   git tag latest 'v0.2.0^{commit}'
    git push origin refs/tags/latest
    ```
 
@@ -182,7 +182,7 @@ Versioned tags are immutable. Only the `latest` release alias may move.
    Replace `OLD_OBJECT_ID` with that result and use the newly published version below:
 
    ```sh
-   git tag -f latest 'v0.1.1^{commit}'
+   git tag -f latest 'v0.2.0^{commit}'
    git push --force-with-lease=refs/tags/latest:OLD_OBJECT_ID origin refs/tags/latest
    ```
 

@@ -15,7 +15,7 @@ A calmer Pi transcript: folded tool runs, plain errors, and details when you nee
 With Pi installed, load the release from Git. Verified hosts: **1.1.0** and **1.2.0**.
 
 ```sh
-pi -e git:github.com/waldoibarra/pi-lens@v0.1.1
+pi -e git:github.com/waldoibarra/pi-lens@v0.2.0
 ```
 
 This loads Lens for one invocation without changing your package list.
