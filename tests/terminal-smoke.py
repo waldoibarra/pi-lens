@@ -4,6 +4,7 @@ import os
 from pathlib import Path
 import re
 import shutil
+import subprocess
 import tempfile
 import sys
 sys.dont_write_bytecode = True
@@ -139,6 +140,14 @@ def run(mode, enabled=True):
 
 
 if __name__ == "__main__":
+    pi_binary = shutil.which("pi")
+    assert pi_binary, "Pi must be available on PATH"
+    host_version = subprocess.run([pi_binary, "--version"], check=True, capture_output=True,
+                                  text=True, timeout=10).stdout.strip()
+    expected_version = os.environ.get("PI_LENS_EXPECT_VERSION")
+    if expected_version:
+        assert host_version == expected_version, f"Expected Pi {expected_version}, got {host_version}"
+    print(f"HOST Pi {host_version}: {pi_binary}", flush=True)
     baseline = run("fullscreen", enabled=False)
     modes = ("fullscreen",) if os.environ.get("PI_LENS_FIXTURE_IMAGE") == "1" else ("fullscreen", "regular")
     for tui_mode in modes:

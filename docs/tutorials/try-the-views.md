@@ -2,7 +2,8 @@
 
 You'll compare folded tool runs and native output without changing your installed package list.
 
-You need Pi 1.1.0 and this checkout. A normal conversation uses your configured model and credentials.
+Use this checkout with Pi 1.1.0 or 1.2.0, the verified hosts.
+A normal conversation uses your configured model and credentials.
 
 1. Start Pi from the checkout:
 

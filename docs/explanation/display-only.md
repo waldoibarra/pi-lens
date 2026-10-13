@@ -24,13 +24,14 @@ The observer never consumes or rewrites input, captures a pointer, or changes ke
 Formatting, display state, presentation, and lifecycle wiring remain separate concerns.
 The formatter ports behavior from `claude-lens` without depending on its checkout at runtime.
 
-Unsupported hosts or rendering failures retain native output.
+Unrecognized transcript layouts or rendering failures retain native output.
+Host version numbers do not gate activation; the verified native structure and guarded projection determine attachment.
 Teardown restores only methods still owned by Lens, preserving wrappers installed afterward.
 
 ## Input role is not authorship
 
 Pi extensions can send user-role messages. That role does not prove human authorship.
-Published Pi 1.1.0 input events lack reliable message-to-row correlation; its inputs keep neutral `Input` labels.
+Published Pi 1.1.0 and 1.2.0 lack reliable message-to-row bindings; inputs keep neutral `Input` labels.
 Origin-aware hosts expose native `binding` metadata with exact `message`, `inputDisplay`, optional `entryId`, and row `part`.
 Lens validates identity structurally, preserving compatibility with the pinned published peers.
 Clipboard normalization uses optional namespace access to the host helper, never a missing named runtime export.

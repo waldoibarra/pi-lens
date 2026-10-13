@@ -1,6 +1,6 @@
 # Contribute
 
-Run changes against the pinned Pi host before trying another version.
+Run unit checks against the pinned development host and terminal checks against each verified runtime.
 
 ## Set up
 
@@ -11,6 +11,8 @@ bun install --frozen-lockfile --ignore-scripts
 ```
 
 The development dependencies include Pi 1.1.0. Runtime installations use Pi's own peer packages.
+Terminal fixtures also verify the installed Pi 1.2.0 host; CI checks both versions.
+Set `PI_LENS_EXPECT_VERSION` to reject accidental testing against a different executable on `PATH`.
 No build step is required: Pi loads the TypeScript entry point.
 
 ## Change a behavior
@@ -128,23 +130,68 @@ It verifies unchanged drawing and mute/stop callbacks without opening audio.
 The terminal test co-loads the actual extension but never starts a voice session.
 A real microphone and live connection still need human acceptance testing.
 
-## Prepare a release candidate
+## Verify installed package discovery
 
-Pi Lens v0.1.0 is distributed from `git:github.com/waldoibarra/pi-lens@v0.1.0`.
-Keep `package.json` private unless the package is renamed for npm publication.
-Future public release tags are immutable; cut a new patch version instead of moving one.
-
-Run the same checks as CI before creating the tag:
+Install the candidate into a disposable Pi profile first, then test that profile without explicitly loading Lens:
 
 ```sh
-bun run check
-PATH="$PWD/node_modules/.bin:$PATH" python3 tests/terminal-smoke.py
-npm pack --dry-run
+python3 tests/installed-smoke.py --profile /path/to/profile --expected-version 1.2.0
 ```
 
-`npm pack --dry-run` inspects the Pi package payload only; it is not an npm publication step.
-Run `npm pack` only when you need a distributable tarball.
-Publishing to npm or creating a remote repository requires separate approval.
-The unscoped npm name is already occupied. Choose an available scoped name before removing `private: true`.
+This fixture never installs packages. It uses the supplied profile's ordinary extension discovery and tests both terminal modes.
+Only `/lens` view commands and `/reload` are submitted; an injected deterministic provider detects accidental model requests.
+The fixture checks that no request occurred. It does not copy credentials or open a microphone.
+The profile's other extensions also load; use a normal profile only with explicit approval after isolated acceptance.
+Owned processes are bounded and terminated on success or failure.
+
+## Publish a release
+
+Pi Lens is distributed as a Pi Git package, currently `git:github.com/waldoibarra/pi-lens@v0.1.1`.
+Keep `package.json` private; the unscoped npm name belongs to another project.
+Versioned tags are immutable. Only the `latest` release alias may move.
+
+1. Update `package.json` and installation examples to the new version.
+2. Run checks and inspect the package payload:
+
+   ```sh
+   bun run check
+   PI_LENS_EXPECT_VERSION=1.1.0 PATH="$PWD/node_modules/.bin:$PATH" python3 tests/terminal-smoke.py
+   npm pack --dry-run
+   ```
+
+   With Pi 1.2.0 first on `PATH`, run the fixture again with `PI_LENS_EXPECT_VERSION=1.2.0`.
+   Run direct, batch (`PI_LENS_FIXTURE_BATCH=1`), and image (`PI_LENS_FIXTURE_IMAGE=1`) cases.
+   No external provider calls are made. Unit and terminal checks do not establish human visual acceptance.
+
+3. Commit the release and create its annotated version tag, for example:
+
+   ```sh
+   git tag -a v0.1.1 -m "Pi Lens 0.1.1"
+   git push --atomic origin main refs/tags/v0.1.1
+   ```
+
+4. Confirm CI passes on the tagged commit, then publish its GitHub Release with compatibility notes.
+5. Promote `latest` only after the versioned release is published and verified:
+
+   ```sh
+   git tag latest 'v0.1.1^{commit}'
+   git push origin refs/tags/latest
+   ```
+
+   For subsequent releases, inspect `git ls-remote origin refs/tags/latest` first.
+   Replace `OLD_OBJECT_ID` with that result and use the newly published version below:
+
+   ```sh
+   git tag -f latest 'v0.1.1^{commit}'
+   git push --force-with-lease=refs/tags/latest:OLD_OBJECT_ID origin refs/tags/latest
+   ```
+
+   Never force a version tag or branch. If the lease fails, inspect the concurrent change before retrying.
+
+6. Update managed installations' explicit version pins after verification; they do not follow `latest` automatically.
+   Test the published package through normal package discovery, not only a development `-e` path.
+   Keep a previous version pin available for rollback.
+
+`npm pack --dry-run` reviews the payload; it does not publish to npm.
 
 Read [How display-only folding works](../explanation/display-only.md) before changing private host integration.

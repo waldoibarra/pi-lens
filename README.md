@@ -12,10 +12,10 @@ A calmer Pi transcript: folded tool runs, plain errors, and details when you nee
 
 ## Try it
 
-With Pi **1.1.0** installed, load the release from Git:
+With Pi installed, load the release from Git. Verified hosts: **1.1.0** and **1.2.0**.
 
 ```sh
-pi -e git:github.com/waldoibarra/pi-lens@v0.1.0
+pi -e git:github.com/waldoibarra/pi-lens@v0.1.1
 ```
 
 This loads Lens for one invocation without changing your package list.
@@ -43,8 +43,9 @@ Lens leaves the voice editor, visualizer, microphone, and controls alone.
 
 Lens changes the display, not tool execution, stored messages, or model context. It makes no model calls.
 
-Transcript grouping uses a guarded private Pi adapter. Other Pi versions retain native rendering.
-On stock Pi 1.1.0, native inputs keep neutral `Input` labels and clipboard metadata is unavailable.
+Transcript grouping uses guarded private Pi interfaces, not a hardcoded host-version check.
+Unrecognized layouts and rendering failures retain native output; untested host versions are not guaranteed compatible.
+On stock Pi 1.1.0 and 1.2.0, inputs keep neutral `Input` labels and clipboard metadata is unavailable.
 Compatible patched hosts can add origin-aware input labels and clipboard previews.
 
 - Read [Try the views](docs/tutorials/try-the-views.md) before your first trial.

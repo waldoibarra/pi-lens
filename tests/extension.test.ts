@@ -82,6 +82,7 @@ function harness(mode = 'tui') {
     working,
     selectionsCleared: () => selectionsCleared,
     scrollPins,
+    document,
     chat: document.children[2] as Container,
   }
 }
@@ -120,6 +121,20 @@ test('status, invalid arguments, raw working state, and reload preserve the view
   await next.commands.get('lens')!.handler('', next.ctx)
   expect(next.notices.at(-1)).toContain('View: raw')
   next.emit('session_shutdown', { reason: 'quit' })
+})
+
+test('an unsupported transcript layout retains native rendering and reports unavailable', async () => {
+  const h = harness()
+  h.document.addChild(new Container())
+  const nativeRender = h.chat.render
+  const nativeMouse = h.chat.handleMouse
+  h.emit('session_start', { reason: 'startup' })
+  expect(h.chat.render).toBe(nativeRender)
+  expect(h.chat.handleMouse).toBe(nativeMouse)
+  expect(h.notices.at(-1)).toContain('Native rendering remains active')
+  await h.commands.get('lens')!.handler('normal', h.ctx)
+  expect(h.notices.at(-1)).toContain('Lens is unavailable')
+  h.emit('session_shutdown', { reason: 'quit' })
 })
 
 test('a failed adapter refuses cosmetic recovery until reload', async () => {

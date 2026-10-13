@@ -1,6 +1,9 @@
 # Views and compatibility
 
-Pi Lens supports Pi **1.1.0**. Other host versions retain native rendering with a warning.
+Pi Lens is verified with Pi **1.1.0** and **1.2.0**.
+It checks the native UI structure rather than rejecting a host version number.
+Unrecognized transcript layouts or rendering failures retain native output with a warning.
+Untested host versions are not guaranteed compatible.
 Origin-aware input labels and clipboard previews require the host contracts described below.
 
 ## Commands
@@ -81,7 +84,7 @@ Normal shows one result fact per step when available. Clean omits facts but keep
 Known failures receive a plain explanation; normal also shows the first meaningful raw error line.
 
 Observed replies and runs receive right-aligned timestamps. Bound native inputs use their exact message timestamp.
-Published Pi 1.1.0 lacks native input-origin bindings; its inputs remain visible with neutral `Input` footers.
+Published Pi 1.1.0 and 1.2.0 lack native input-origin bindings; inputs remain visible with neutral `Input` footers.
 Lens does not match text, timestamps, or submission order to infer an input's origin.
 
 A compatible host binds input metadata to native message components.
@@ -119,7 +122,7 @@ Lens cannot recover output the tool truncated or never stored, including unrepor
 
 ## Clipboard images
 
-Clipboard presentation requires the clipboard metadata contract below; published Pi 1.1.0 and identity-only hosts lack it.
+Clipboard presentation requires the clipboard metadata contract below; published Pi 1.1.0, Pi 1.2.0, and identity-only hosts lack it.
 Those older hosts retain original input text without clipboard previews.
 
 The host binds captured bytes and validated text ranges to the exact originating composer message.

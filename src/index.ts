@@ -1,4 +1,4 @@
-import { VERSION, type ExtensionAPI, type ExtensionContext } from '@earendil-works/pi-coding-agent'
+import type { ExtensionAPI, ExtensionContext } from '@earendil-works/pi-coding-agent'
 import { attachProjection, findTranscript } from './adapter'
 import { VIEWS, stepLabel, type LensView } from './domain'
 import { projectTranscript } from './presentation'
@@ -73,15 +73,6 @@ export default function lens(pi: ExtensionAPI): void {
     if (saved) Object.assign(state, saved)
     host[SLOT] = { session, state }
     if (ctx.mode !== 'tui') return
-    if (VERSION !== '1.1.0') {
-      unavailable = true
-      state.view = 'raw'
-      ctx.ui.notify(
-        `Lens supports Pi 1.1.0; this host is ${VERSION}. Native rendering remains active.`,
-        'warning',
-      )
-      return
-    }
     tuiContext = ctx
     ctx.ui.setWidget(
       WIDGET,

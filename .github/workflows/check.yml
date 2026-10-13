@@ -17,5 +17,7 @@ jobs:
           bun-version: '1.4.3'
       - run: bun install --frozen-lockfile --ignore-scripts
       - run: bun run check
-      - run: PATH="$PWD/node_modules/.bin:$PATH" python3 tests/terminal-smoke.py
+      - run: PI_LENS_EXPECT_VERSION=1.1.0 PATH="$PWD/node_modules/.bin:$PATH" python3 tests/terminal-smoke.py
+      - run: npm install --prefix "$RUNNER_TEMP/pi-host" --ignore-scripts --no-audit --no-fund @earendil-works/pi-coding-agent@1.2.0
+      - run: PI_LENS_EXPECT_VERSION=1.2.0 PATH="$RUNNER_TEMP/pi-host/node_modules/.bin:$PATH" python3 tests/terminal-smoke.py
       - run: npm pack --dry-run
