@@ -52,8 +52,8 @@ Compatible patched hosts can add origin-aware input labels and clipboard preview
 - Read [Views and compatibility](docs/reference/views.md) before relying on expansion or historical labels.
 - Read [How display-only folding works](docs/explanation/display-only.md) before changing the adapter.
 - Read [Contribute](docs/how-to/contribute.md) before developing or packaging a change.
-- Read the sibling [Claude Code Lens](https://github.com/waldoibarra/claude-code-lens) for the closest Claude implementation.
+- Read the sibling [Claude Lens](https://github.com/waldoibarra/claude-lens) for the closest Claude implementation.
 
 ## License
 
-MIT. Formatting behavior is ported from Waldo Ibarra's `claude-code-lens`.
+MIT. Formatting behavior is ported from Waldo Ibarra's `claude-lens`.

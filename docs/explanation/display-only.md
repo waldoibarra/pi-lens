@@ -22,7 +22,7 @@ It exposes current thinking separately; presentation appends one inert activity 
 `src/hover.ts` observes mouse input before Pi's viewport listener consumes it.
 The observer never consumes or rewrites input, captures a pointer, or changes keyboard focus.
 Formatting, display state, presentation, and lifecycle wiring remain separate concerns.
-The formatter ports behavior from `claude-code-lens` without depending on its checkout at runtime.
+The formatter ports behavior from `claude-lens` without depending on its checkout at runtime.
 
 Unsupported hosts or rendering failures retain native output.
 Teardown restores only methods still owned by Lens, preserving wrappers installed afterward.

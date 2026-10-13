@@ -1,4 +1,4 @@
-// Ported pure formatting behavior from claude-code-lens ca16172.
+// Ported pure formatting behavior from claude-lens ca16172.
 
 export type LensView = 'clean' | 'normal' | 'raw'
 

@@ -165,7 +165,7 @@ Historical unbound wakes remain visible. Existing subagent custom-message folds 
 
 ## Parity limits
 
-The target is Claude Code Lens at commit `ca16172`, with Pi-specific labels and controls.
+The target is Claude Lens at commit `ca16172`, with Pi-specific labels and controls.
 
 - One transcript-tail summary owns Lens activity; the shared spinner remains native to protect other extensions.
 - Fullscreen collapse protection wraps only Pi 1.1's recognized ScrollView instance; raw mode restores native layout.
