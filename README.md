@@ -12,14 +12,15 @@ A calmer Pi transcript: folded tool runs, plain errors, and details when you nee
 
 ## Try it
 
-From this checkout, with Pi **1.1.0** installed:
+With Pi **1.1.0** installed, load the release from Git:
 
 ```sh
-pi -e .
+pi -e git:github.com/waldoibarra/pi-lens@v0.1.0
 ```
 
 This loads Lens for one invocation without changing your package list.
-This package is unpublished. npm's `pi-lens` name belongs to an unrelated project; do not install it.
+This package is distributed as a Pi Git package, not an npm package.
+npm's `pi-lens` name belongs to an unrelated project; do not install it.
 
 ## Choose your view
 
@@ -43,7 +44,8 @@ Lens leaves the voice editor, visualizer, microphone, and controls alone.
 Lens changes the display, not tool execution, stored messages, or model context. It makes no model calls.
 
 Transcript grouping uses a guarded private Pi adapter. Other Pi versions retain native rendering.
-This is an initial testable version; host-specific parity limits remain.
+On stock Pi 1.1.0, native inputs keep neutral `Input` labels and clipboard metadata is unavailable.
+Compatible patched hosts can add origin-aware input labels and clipboard previews.
 
 - Read [Try the views](docs/tutorials/try-the-views.md) before your first trial.
 - Read [Install and remove Lens](docs/how-to/install.md) before making it persistent.

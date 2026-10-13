@@ -1,6 +1,6 @@
 # Install and remove Lens
 
-Use a local checkout while Pi Lens is unpublished.
+Install Pi Lens from its pinned Git source.
 
 Published Pi 1.1.0 supports Lens folds but lacks input-origin bindings.
 `You` labels and extension-input folding require a host exposing input-origin bindings; installing Lens alone is insufficient.
@@ -8,13 +8,12 @@ Read [Views and compatibility](../reference/views.md#labels-and-retention) befor
 
 ## Load it for one invocation
 
-From another project, pass the checkout directory:
+From another project, pass the pinned Git source:
 
 ```sh
-pi -e /path/to/pi-lens
+pi -e git:github.com/waldoibarra/pi-lens@v0.1.0
 ```
 
-Replace `/path/to/pi-lens` with your checkout path.
 Closing Pi unloads the extension. `/lens raw` restores native presentation without closing the session.
 
 ## Keep it installed
@@ -22,7 +21,7 @@ Closing Pi unloads the extension. `/lens raw` restores native presentation witho
 If your Pi settings are not managed elsewhere, run:
 
 ```sh
-pi install /path/to/pi-lens
+pi install git:github.com/waldoibarra/pi-lens@v0.1.0
 ```
 
 Restart Pi or run `/reload`. Enter `/lens` to verify the command is available.
@@ -30,7 +29,7 @@ Restart Pi or run `/reload`. Enter `/lens` to verify the command is available.
 To remove it:
 
 ```sh
-pi remove /path/to/pi-lens
+pi remove git:github.com/waldoibarra/pi-lens@v0.1.0
 ```
 
 Restart Pi or run `/reload` again.
@@ -40,5 +39,6 @@ Restart Pi or run `/reload` again.
 If another tool manages your Pi settings, update that configuration source instead of its installed copy.
 Use `-e` for temporary validation without changing the package list. Lens itself writes no settings files.
 After validation, manage an accepted immutable source revision through your normal configuration workflow.
+Pi Lens is a native Pi Git package; it is not published to npm.
 
 Read [Views and compatibility](../reference/views.md) before combining Lens with other transcript renderers.

@@ -128,14 +128,21 @@ It verifies unchanged drawing and mute/stop callbacks without opening audio.
 The terminal test co-loads the actual extension but never starts a voice session.
 A real microphone and live connection still need human acceptance testing.
 
-## Package a release candidate
+## Prepare a release candidate
 
-Inspect the payload before creating a tarball:
+Pi Lens v0.1.0 is distributed from `git:github.com/waldoibarra/pi-lens@v0.1.0`.
+Keep `package.json` private unless the package is renamed for npm publication.
+Future public release tags are immutable; cut a new patch version instead of moving one.
+
+Run the same checks as CI before creating the tag:
 
 ```sh
+bun run check
+PATH="$PWD/node_modules/.bin:$PATH" python3 tests/terminal-smoke.py
 npm pack --dry-run
 ```
 
+`npm pack --dry-run` inspects the Pi package payload only; it is not an npm publication step.
 Run `npm pack` only when you need a distributable tarball.
 Publishing to npm or creating a remote repository requires separate approval.
 The unscoped npm name is already occupied. Choose an available scoped name before removing `private: true`.
