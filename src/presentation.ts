@@ -12,6 +12,7 @@ import {
   Text,
   truncateToWidth,
   visibleWidth,
+  wrapTextWithAnsi,
   rgbColor,
   type Component,
 } from '@earendil-works/pi-tui'
@@ -41,15 +42,33 @@ import {
   nativeImageReadParts,
   reconcileDisclosures,
   setNativeExpanded,
-  voiceId,
   type DisclosureEntry,
   type NativeDisclosureRow,
 } from './disclosure'
 
 type ToolRow = Component & ToolData & NativeDisclosureRow
 
-const REPLY_DARK = rgbColor(217, 119, 87)
-const REPLY_LIGHT = rgbColor(166, 71, 45)
+const TAG_CYAN_DARK = rgbColor(34, 211, 238)
+const TAG_CYAN_LIGHT = rgbColor(8, 145, 178)
+const VOICE_PURPLE_DARK = rgbColor(196, 181, 253)
+const VOICE_PURPLE_LIGHT = rgbColor(126, 34, 206)
+const COMPOSER_EMERALD_DARK = rgbColor(52, 211, 153)
+const COMPOSER_EMERALD_LIGHT = rgbColor(4, 120, 87)
+
+type Tone = 'muted' | 'error' | 'accent' | 'cyan' | 'purple' | 'emerald'
+
+function toneColor(theme: Theme, tone: Tone) {
+  switch (tone) {
+    case 'cyan':
+      return theme.appearance === 'light' ? TAG_CYAN_LIGHT : TAG_CYAN_DARK
+    case 'purple':
+      return theme.appearance === 'light' ? VOICE_PURPLE_LIGHT : VOICE_PURPLE_DARK
+    case 'emerald':
+      return theme.appearance === 'light' ? COMPOSER_EMERALD_LIGHT : COMPOSER_EMERALD_DARK
+    default:
+      return undefined
+  }
+}
 
 const stepCache = new WeakMap<
   ToolRow,
@@ -90,12 +109,7 @@ function stack(...children: Component[]): Container {
   return container
 }
 
-function line(
-  text: string,
-  theme: Theme,
-  tone: 'muted' | 'error' | 'accent' | 'reply' = 'muted',
-  right = false,
-): Component {
+function line(text: string, theme: Theme, tone: Tone = 'muted', right = false): Component {
   return {
     render(width) {
       const safe = stripVTControlCharacters(text)
@@ -103,14 +117,30 @@ function line(
         .replace(/[\x00-\x1f\x7f]/g, '')
       const value = truncateToWidth(safe, Math.max(0, width))
       const padding = right ? ' '.repeat(Math.max(0, width - visibleWidth(value))) : ''
-      const styled =
-        tone === 'reply'
-          ? theme.style(value, {
-              fg: theme.appearance === 'light' ? REPLY_LIGHT : REPLY_DARK,
-              bold: true,
-            })
-          : theme.fg(tone, value)
+      const color = toneColor(theme, tone)
+      const styled = color
+        ? theme.style(value, { fg: color, bold: true })
+        : theme.fg(tone as 'muted' | 'error' | 'accent', value)
       return [padding + styled]
+    },
+    invalidate() {},
+  }
+}
+
+function wrappedLine(text: string, theme: Theme, tone: Tone = 'muted'): Component {
+  return {
+    render(width) {
+      const safe = stripVTControlCharacters(text)
+        .replace(/[\r\t]/g, ' ')
+        .replace(/[\x00-\x09\x0b-\x1f\x7f]/g, '')
+        .replace(/\s+/g, ' ')
+        .trim()
+      const color = toneColor(theme, tone)
+      return wrapTextWithAnsi(safe, Math.max(0, width)).map((value) =>
+        color
+          ? theme.style(value, { fg: color, bold: true })
+          : theme.fg(tone as 'muted' | 'error' | 'accent', value),
+      )
     },
     invalidate() {},
   }
@@ -161,11 +191,19 @@ function footer(
   at: number | undefined,
   model: string | undefined,
   theme: Theme,
-  role: 'user' | 'reply' | 'tools' = 'tools',
+  role: 'user' | 'reply' | 'tools' | 'voice' = 'tools',
   inputLabel = 'Input',
 ): Component {
-  const label = `${role === 'user' ? inputLabel : modelName(model)}${at === undefined ? '' : ` · ${formatTime(at, null)}`}`
-  return line(label, theme, role === 'reply' ? 'reply' : 'muted', true)
+  const label = `${role === 'user' || role === 'voice' ? inputLabel : modelName(model)}${at === undefined ? '' : ` · ${formatTime(at, null)}`}`
+  const tone =
+    role === 'reply' || role === 'tools'
+      ? 'cyan'
+      : role === 'voice'
+        ? 'purple'
+        : inputLabel === 'You'
+          ? 'emerald'
+          : 'muted'
+  return line(label, theme, tone, true)
 }
 
 function stepRow(
@@ -319,25 +357,110 @@ function toolFallback(row: ToolRow, state: LensState, theme: Theme, redraw: () =
   return stack(...children)
 }
 
-function voiceRow(
-  row: Component,
-  state: LensState,
-  theme: Theme,
-  redraw: () => void,
-): Component | undefined {
-  const native = row as Component & { message?: unknown }
+type VoiceItem = {
+  row: Component & NativeDisclosureRow
+  message: Record<string, unknown>
+  delegationId: string
+  source: string
+  at?: number
+  preview: string
+  attachments: number
+}
+
+type VoiceGroup = {
+  rows: VoiceItem[]
+  key: string
+}
+
+function voiceSource(delegationId: string, at?: number): string {
+  const encodedId = encodeURIComponent(delegationId)
+  return at === undefined ? encodedId : `${encodedId}@${at}`
+}
+
+function voiceItem(row: Component): VoiceItem | undefined {
+  if (!(row instanceof CustomMessageComponent)) return undefined
+  const native = row as unknown as Component & NativeDisclosureRow & { message?: unknown }
   const message = record(native.message)
   if (message.customType !== 'pi-live-codex-delegation') return undefined
   const data = record(message.details)
   if (typeof data.delegationId !== 'string') return undefined
-  const key = `voice:${data.delegationId}`
-  const open = state.open.has(key)
-  const preview = textOf(message.content).trim().split('\n')[0].replace(/\s+/g, ' ')
-  const attachments = Array.isArray(data.attachments) ? data.attachments.length : 0
-  const title = `${open ? '▾' : '▸'} Voice request: ${preview || '(attachments)'}${attachments ? ` · ${attachments} attachments` : ''}`
-  const disclosureRow = row as NativeDisclosureRow
-  const header = disclosureHeader(line(title, theme), key, disclosureRow, state, redraw, theme)
-  return open ? stack(header, disclosureBody(disclosureRow, key, state, redraw)) : header
+  const at =
+    typeof message.timestamp === 'number' && Number.isFinite(message.timestamp)
+      ? message.timestamp
+      : undefined
+  return {
+    row: native,
+    message,
+    delegationId: data.delegationId,
+    source: voiceSource(data.delegationId, at),
+    at,
+    preview: textOf(message.content).trim().split('\n')[0].replace(/\s+/g, ' '),
+    attachments: Array.isArray(data.attachments) ? data.attachments.length : 0,
+  }
+}
+
+function voiceGroups(children: Component[]): Map<Component, VoiceGroup> {
+  const byRow = new Map<Component, VoiceGroup>()
+  for (let index = 0; index < children.length;) {
+    const first = voiceItem(children[index]!)
+    if (!first) {
+      index++
+      continue
+    }
+    const rows = [first]
+    index++
+    while (index < children.length) {
+      const next = voiceItem(children[index]!)
+      if (next) {
+        rows.push(next)
+        index++
+        continue
+      }
+      if (isMessageSpacer(children[index])) {
+        const afterSpacer = voiceItem(children[index + 1]!)
+        if (afterSpacer) {
+          rows.push(afterSpacer)
+          index += 2
+          continue
+        }
+      }
+      break
+    }
+    const key = `voice:${rows.map((item) => item.source).join('|')}`
+    const group = { rows, key }
+    for (const item of rows) byRow.set(item.row, group)
+  }
+  return byRow
+}
+
+function voiceGroupRow(
+  group: VoiceGroup,
+  state: LensState,
+  theme: Theme,
+  redraw: () => void,
+): Component {
+  const open = state.open.has(group.key)
+  const first = group.rows[0]!
+  const attachments = group.rows.reduce((sum, item) => sum + item.attachments, 0)
+  const count = group.rows.length > 1 ? `${group.rows.length} requests` : 'Voice request'
+  const title = `${open ? '▾' : '▸'} ${count}: ${first.preview || '(attachments)'}${attachments ? ` · ${attachments} attachments` : ''}`
+  const header = hoverHeader(
+    line(title, theme, 'purple'),
+    `${group.key}:summary`,
+    () => {
+      state.toggle(group.key)
+      for (const item of group.rows) setNativeExpanded(item.row, state.open.has(group.key))
+      redraw()
+    },
+    theme,
+    hoverFor(state),
+  )
+  const children: Component[] = [header]
+  if (open) {
+    for (const item of group.rows) children.push(disclosureBody(item.row, group.key, state, redraw))
+  }
+  children.push(footer(group.rows.at(-1)?.at, undefined, theme, 'voice', 'You'))
+  return stack(...children)
 }
 
 type InputGroup = InputBinding & { rows: Component[] }
@@ -437,6 +560,21 @@ function inputRow(
   )
 }
 
+function assistantVisibility(child: Component): 'soft' | 'hard' | 'none' {
+  if (!(child instanceof AssistantMessageComponent)) return 'none'
+  const message = record((child as unknown as { lastMessage?: unknown }).lastMessage)
+  if (!Array.isArray(message.content)) return 'hard'
+  const hasText = textOf(message.content).trim().length > 0
+  const hasThinking = message.content.some((block) => {
+    const value = record(block)
+    return value.type === 'thinking' && typeof value.thinking === 'string' && value.thinking.trim()
+  })
+  const hasToolCall = message.content.some((block) => record(block).type === 'toolCall')
+  const hasStopNotice = ['error', 'aborted', 'length'].includes(String(message.stopReason))
+  if (!hasText && !hasStopNotice && (hasThinking || hasToolCall)) return 'soft'
+  return 'hard'
+}
+
 /** A display copy: source children, messages, and native components retain their identity. */
 export function projectTranscript(
   children: Component[],
@@ -452,8 +590,9 @@ export function projectTranscript(
   const groupFor = new Map<Component, string>()
   const disclosures: DisclosureEntry[] = []
   const inputs = inputGroups(children)
+  const voices = voiceGroups(children)
   const nativeImageFallbacks = new Set<Component>()
-  // Notices and user-visible prose remain at their original positions.
+  // Hard boundaries preserve user-visible order; thinking-only assistant rows are soft span members.
   let boundary = 0
   for (const child of children) {
     if (child instanceof ToolExecutionComponent) {
@@ -477,7 +616,10 @@ export function projectTranscript(
         key: `step:${row.toolCallId}`,
         managed: kind !== 'question' || questionData(row) !== undefined,
       })
-      if (!stamp || kind === 'question') continue
+      if (!stamp || kind === 'question') {
+        boundary++
+        continue
+      }
       const key = `${boundary}:${stamp.turn}:${stamp.run}`
       const group = groups.get(key) ?? []
       group.push(row)
@@ -485,20 +627,7 @@ export function projectTranscript(
       groupFor.set(child, key)
     } else if (child instanceof AssistantMessageComponent) {
       const message = record((child as unknown as { lastMessage?: unknown }).lastMessage)
-      if (
-        textOf(message.content).trim() ||
-        (Array.isArray(message.content) &&
-          message.content.some((block) => {
-            const value = record(block)
-            return (
-              value.type === 'thinking' &&
-              typeof value.thinking === 'string' &&
-              value.thinking.trim()
-            )
-          })) ||
-        ['error', 'aborted', 'length'].includes(String(message.stopReason))
-      )
-        boundary++
+      if (assistantVisibility(child) === 'hard') boundary++
     } else if (
       child instanceof UserMessageComponent ||
       child instanceof SkillInvocationMessageComponent ||
@@ -511,9 +640,9 @@ export function projectTranscript(
           key: `input:${input.id}`,
           managed: true,
         })
-      const id = voiceId(child)
-      if (id)
-        disclosures.push({ row: child as NativeDisclosureRow, key: `voice:${id}`, managed: true })
+      const voice = voices.get(child)
+      if (voice)
+        disclosures.push({ row: child as NativeDisclosureRow, key: voice.key, managed: true })
       boundary++
     }
   }
@@ -539,14 +668,17 @@ export function projectTranscript(
     children,
     state,
     theme,
-    (key, text, activate) => hoverHeader(line(text, theme), key, activate, theme, hover),
+    (key, text, activate) => hoverHeader(wrappedLine(text, theme), key, activate, theme, hover),
     redraw,
     () => hover.clear(),
   )
 
   const drawnInputs = new Set<InputGroup>()
   const drawn = new Set<string>()
-  const result = children.flatMap((child, index) => {
+  const drawnVoices = new Set<VoiceGroup>()
+  const result: Component[] = []
+
+  const renderChild = (child: Component, index: number): Component[] => {
     if (
       isMessageSpacer(child) &&
       isMessageShell(children[index + 1]) &&
@@ -563,8 +695,15 @@ export function projectTranscript(
       if (nativeImageFallbacks.has(child)) return [child]
       return [toolFallback(child as unknown as ToolRow, state, theme, redraw)]
     }
-    if (child instanceof CustomMessageComponent)
-      return [voiceRow(child, state, theme, redraw) ?? compactMessageShell(child)]
+    if (child instanceof CustomMessageComponent) {
+      const voice = voices.get(child)
+      if (voice) {
+        if (drawnVoices.has(voice)) return []
+        drawnVoices.add(voice)
+        return [voiceGroupRow(voice, state, theme, redraw)]
+      }
+      return [compactMessageShell(child)]
+    }
     const input = inputs.get(child)
     if (input) {
       if (drawnInputs.has(input)) return []
@@ -595,7 +734,61 @@ export function projectTranscript(
       }
     }
     return [compactMessageShell(child, progress.get(child) ?? child)]
-  })
+  }
+
+  const isSoftSpanChild = (child: Component, index: number): boolean => {
+    if (groupFor.has(child)) return true
+    if (assistantVisibility(child) === 'soft' && progress.has(child)) return true
+    return (
+      isMessageSpacer(child) &&
+      index > 0 &&
+      index + 1 < children.length &&
+      isSoftSpanChild(children[index - 1]!, index - 1) &&
+      (groupFor.has(children[index + 1]!) ||
+        (assistantVisibility(children[index + 1]!) === 'soft' &&
+          progress.has(children[index + 1]!)))
+    )
+  }
+
+  const renderSoftSpan = (span: Component[]): Component[] => {
+    const rendered: Component[] = []
+    const toolRows = span.filter((child): child is ToolRow => groupFor.has(child)) as ToolRow[]
+    if (toolRows.length) {
+      const firstKey = groupFor.get(toolRows[0] as unknown as Component)
+      const sameGroup = firstKey && toolRows.every((row) => groupFor.get(row) === firstKey)
+      if (sameGroup && firstKey && !drawn.has(firstKey)) {
+        drawn.add(firstKey)
+        rendered.push(foldRows(groups.get(firstKey)!, state, theme, redraw))
+      } else {
+        for (const row of toolRows) {
+          const key = groupFor.get(row)
+          if (!key || drawn.has(key)) continue
+          drawn.add(key)
+          rendered.push(foldRows(groups.get(key)!, state, theme, redraw))
+        }
+      }
+    }
+    for (const child of span) {
+      if (!(child instanceof AssistantMessageComponent)) continue
+      const projected = progress.get(child)
+      if (projected) rendered.push(compactMessageShell(child, projected))
+    }
+    return rendered
+  }
+
+  for (let index = 0; index < children.length;) {
+    if (!isSoftSpanChild(children[index]!, index)) {
+      result.push(...renderChild(children[index]!, index))
+      index++
+      continue
+    }
+    const span: Component[] = []
+    while (index < children.length && isSoftSpanChild(children[index]!, index)) {
+      span.push(children[index]!)
+      index++
+    }
+    result.push(...renderSoftSpan(span))
+  }
   const running = children
     .filter((child): child is ToolExecutionComponent => child instanceof ToolExecutionComponent)
     .map((row) => normalized(row as unknown as ToolRow, state))

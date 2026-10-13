@@ -202,7 +202,7 @@ test('voice custom renderers receive native expanded state', () => {
       new Text(options.expanded ? 'VOICE_NATIVE_EXPANDED' : 'VOICE_NATIVE_COLLAPSED', 0, 0),
   )
   const state = new LensState()
-  state.open.add('voice:native-voice')
+  state.open.add('voice:native-voice@1')
   const opened = plain(projected(row, state).render(80))
   expect(opened).toContain('VOICE_NATIVE_EXPANDED')
   expect(opened).not.toContain('VOICE_NATIVE_COLLAPSED')

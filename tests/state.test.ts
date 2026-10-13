@@ -120,6 +120,24 @@ test('branch reconciliation removes abandoned progress segment choices', () => {
   expect([...state.open].sort()).toEqual(['progress:100:0', 'progress:100:1'])
 })
 
+test('branch reconciliation removes abandoned progress update choices while parent remains', () => {
+  const state = new LensState()
+  state.open.add('progress:100:0')
+  state.open.add('progress-detail:100:0:0')
+  state.open.add('progress-detail:100:0:1')
+  state.reconcile([
+    {
+      type: 'message',
+      message: {
+        role: 'assistant',
+        timestamp: 100,
+        content: [{ type: 'thinking', thinking: '# Kept update' }],
+      },
+    },
+  ])
+  expect([...state.open].sort()).toEqual(['progress-detail:100:0:0', 'progress:100:0'])
+})
+
 test('metadata eviction does not discard active individual open choices', () => {
   const state = new LensState()
   for (let i = 0; i < 650; i++) {
@@ -133,6 +151,61 @@ test('metadata eviction does not discard active individual open choices', () => 
   expect(state.calls.size).toBe(600)
   expect(state.calls.has('0')).toBe(false)
   expect(state.open.has('step:0')).toBe(true)
+})
+
+test('branch reconciliation keeps encoded voice ids and supported timestamps without decode errors', () => {
+  const state = new LensState()
+  const encoded = [
+    `${encodeURIComponent('negative')}@-1`,
+    `${encodeURIComponent('decimal')}@1.5`,
+    `${encodeURIComponent('id%40123')}@2`,
+    `${encodeURIComponent('id@123')}@3`,
+    `${encodeURIComponent('pipe|id')}@4`,
+    `${encodeURIComponent('colon:id')}@5`,
+    encodeURIComponent('plain'),
+  ].join('|')
+  state.open.add(`voice:${encoded}`)
+  state.open.add('voice:%E0%A4%A')
+  expect(() =>
+    state.reconcile([
+      {
+        type: 'custom_message',
+        customType: 'pi-live-codex-delegation',
+        details: { delegationId: 'negative' },
+      },
+      {
+        type: 'custom_message',
+        customType: 'pi-live-codex-delegation',
+        details: { delegationId: 'decimal' },
+      },
+      {
+        type: 'custom_message',
+        customType: 'pi-live-codex-delegation',
+        details: { delegationId: 'id%40123' },
+      },
+      {
+        type: 'custom_message',
+        customType: 'pi-live-codex-delegation',
+        details: { delegationId: 'id@123' },
+      },
+      {
+        type: 'custom_message',
+        customType: 'pi-live-codex-delegation',
+        details: { delegationId: 'pipe|id' },
+      },
+      {
+        type: 'custom_message',
+        customType: 'pi-live-codex-delegation',
+        details: { delegationId: 'colon:id' },
+      },
+      {
+        type: 'custom_message',
+        customType: 'pi-live-codex-delegation',
+        details: { delegationId: 'plain' },
+      },
+    ]),
+  ).not.toThrow()
+  expect([...state.open].sort()).toEqual([`voice:${encoded}`])
 })
 
 test('branch reconciliation prunes step, run, image details, and voice opens from the active transcript', () => {

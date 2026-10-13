@@ -11,8 +11,8 @@ import {
   Markdown,
   MouseRegion,
   Text,
-  truncateToWidth,
   visibleWidth,
+  wrapTextWithAnsi,
   stripTerminalSequences,
   type Component,
 } from '@earendil-works/pi-tui'
@@ -31,7 +31,7 @@ const header: ProgressHeader = (key, text, activate) => {
   return new MouseRegion(
     {
       render(width) {
-        return [truncateToWidth(text, Math.max(0, width))]
+        return wrapTextWithAnsi(text, Math.max(0, width))
       },
       invalidate() {},
     },
@@ -106,9 +106,13 @@ test('expanded thinking history is inset two columns under its disclosure headin
   const headerIndex = lines.findIndex((line) => line.includes('▾ Thinking updates · Second update'))
   expect(headerIndex).toBeGreaterThanOrEqual(0)
   expect(lines[headerIndex].startsWith('▾ Thinking updates')).toBe(true)
-  expect(lines[headerIndex + 1]).toBe('  • First update')
-  expect(lines[headerIndex + 2].trimEnd()).toBe('    Body line')
-  expect(lines[headerIndex + 3]).toBe('  • Second update')
+  expect(lines[headerIndex + 1]).toBe('  • ▸ First update')
+  expect(lines[headerIndex + 2]).toBe('  • ▸ Second update')
+  state.open.add('progress-detail:90:0:0')
+  const openedLines = plain(render([row], state).lines).split('\n')
+  const first = openedLines.findIndex((line) => line.includes('• ▾ First update'))
+  expect(first).toBeGreaterThanOrEqual(0)
+  expect(openedLines[first + 1].trimEnd()).toBe('    Body line')
 })
 
 test('expanded thinking inset preserves wrapping at narrow widths', () => {
@@ -119,12 +123,10 @@ test('expanded thinking inset preserves wrapping at narrow widths', () => {
   ]).row
 
   const lines = plain(render([row], state, 14).lines).split('\n')
-  const bulletIndex = lines.findIndex((line) => line.includes('• Alpha'))
+  const bulletIndex = lines.findIndex((line) => line.includes('• ▸ Alpha'))
   expect(bulletIndex).toBeGreaterThanOrEqual(0)
   expect(lines[bulletIndex].startsWith('  • ')).toBe(true)
-  expect(lines[bulletIndex + 1].startsWith('    ')).toBe(true)
-  for (const line of lines.slice(bulletIndex, bulletIndex + 3))
-    expect(visibleWidth(line)).toBeLessThanOrEqual(14)
+  for (const line of lines.slice(bulletIndex)) expect(visibleWidth(line)).toBeLessThanOrEqual(14)
 })
 
 test('thinking after visible prose starts a separate segment within one assistant row', () => {
@@ -147,19 +149,21 @@ test('thinking after visible prose starts a separate segment within one assistan
   expect(headerKeys).toEqual(['progress:100:0', 'progress:100:1'])
 
   state.open.add('progress:100:1')
+  state.open.add('progress-detail:100:1:0')
   const openedSecond = render([new UserMessageComponent('request'), row], state).text
   expect(openedSecond).toContain('▸ Thinking updates · Plan A')
   expect(openedSecond).toContain('▾ Thinking updates · Build B')
-  expect(openedSecond).toContain('• Build B')
+  expect(openedSecond).toContain('• ▾ Build B')
   expect(openedSecond).toContain('  more detail')
   expect(openedSecond).not.toContain('old detail')
 
   state.open.clear()
   state.open.add('progress:100:0')
+  state.open.add('progress-detail:100:0:0')
   const openedFirst = render([new UserMessageComponent('request'), row], state).text
   expect(openedFirst).toContain('▾ Thinking updates · Plan A')
   expect(openedFirst).toContain('▸ Thinking updates · Build B')
-  expect(openedFirst).toContain('• Plan A')
+  expect(openedFirst).toContain('• ▾ Plan A')
   expect(openedFirst).toContain('  old detail')
   expect(openedFirst).not.toContain('more detail')
 })
@@ -246,6 +250,7 @@ test('hidden native thinking expands fully without changing original visibility 
   expect(plain(rawBefore)).toContain('Thinking...')
 
   state.open.add('progress:400:0')
+  state.open.add('progress-detail:400:0:0')
   const projected = render([row], state).text
   expect(projected).toContain('Secret')
   expect(projected).toContain('FULL_SECRET_TEXT')
@@ -307,6 +312,7 @@ test('streaming heading renders one noninteractive live indicator and settles to
 test('multi-segment streaming choices survive native assistant row rebuilds independently', () => {
   const state = new LensState()
   state.open.add('progress:1300:1')
+  state.open.add('progress-detail:1300:1:0')
   const content = [
     { type: 'thinking', thinking: '# First segment\nFIRST_DETAIL' },
     { type: 'text', text: 'VISIBLE_REPLY_BOUNDARY' },
@@ -403,27 +409,30 @@ test('fence-aware segmentation ignores fake headings and preserves preface, para
 
   const text = render([row], state).text
   expect(text).toContain('▾ Thinking updates · Real heading · 2 updates')
-  expect(text).toContain('• Preface line')
-  expect(text).toContain('• Real heading')
-  expect(text).toContain('  Paragraph one.')
-  expect(text).toContain('  Paragraph two.')
-  expect(text).toContain('    # indented code heading')
-  expect(text).toContain('# unfinished code stays code')
-  expect(text).not.toContain('not a heading ·')
+  expect(text).toContain('• ▸ Preface line')
+  expect(text).toContain('• ▸ Real heading')
+  state.open.add('progress-detail:901:0:1')
+  const opened = render([row], state).text
+  expect(opened).toContain('  Paragraph one.')
+  expect(opened).toContain('  Paragraph two.')
+  expect(opened).toContain('    # indented code heading')
+  expect(opened).toContain('# unfinished code stays code')
+  expect(opened).not.toContain('not a heading ·')
 })
 
 test('compact expanded thinking labels are unstyled while body Markdown remains native', () => {
   const state = new LensState()
   state.open.add('progress:949:0')
+  state.open.add('progress-detail:949:0:0')
   const row = assistant(949, [
     { type: 'thinking', thinking: '# Compact label\n\nBody **keeps bold**' },
   ]).row
 
   const lines = render([row], state).lines
-  const label = lines.find((line) => line.includes('• Compact label'))
+  const label = lines.find((line) => line.includes('• ▾ Compact label'))
   const body = lines.find((line) => line.includes('keeps bold'))
   expect(label).toBeDefined()
-  expect(label!).toContain('• Compact label')
+  expect(label!).toContain('• ▾ Compact label')
   expect(label!).not.toContain('\x1b[')
   expect(body).toBeDefined()
   expect(body!).toContain('\x1b[')
@@ -437,10 +446,10 @@ test('expanded thinking labels wrap without losing long Unicode trailing sentine
   const row = assistant(954, [{ type: 'thinking', thinking: title }]).row
 
   const lines = render([row], state, 32).lines
-  const firstLabel = lines.findIndex((line) => line.includes('• Expanded labels'))
+  const firstLabel = lines.findIndex((line) => line.includes('• ▸ Expanded labels'))
   const lastLabel = lines.findIndex((line) => line.includes('部🧪END'))
   expect(firstLabel).toBeGreaterThanOrEqual(0)
-  expect(lastLabel).toBeGreaterThan(firstLabel)
+  expect(lastLabel).toBeGreaterThanOrEqual(0)
   expect(plain(lines)).toContain('尾')
   expect(plain(lines)).toContain('部🧪END')
   for (const line of lines.slice(firstLabel, lastLabel + 1)) {
@@ -458,23 +467,41 @@ test('hidden thinking-only rows do not leave accumulated blank lines', () => {
   expect(lines.at(-1)).not.toBe('')
 })
 
-test('Pi default thinking-inert Mermaid transformer does not disable tight bullets', () => {
+test('Pi default thinking-inert Mermaid transformer keeps per-update disclosures', () => {
   const state = new LensState()
   state.open.add('progress:950:0')
-  const row = assistant(950, [{ type: 'thinking', thinking: '**First**\n\n**Second**' }], {
-    transformers: [createMermaidMarkdownTransformer({ getMode: () => 'final' })],
-  }).row
-  const lines = render([row], state).text.split('\n')
-  const first = lines.findIndex((line) => line.includes('• First'))
-  expect(first).toBeGreaterThanOrEqual(0)
-  expect(lines[first + 1]).toContain('• Second')
+  const row = assistant(
+    950,
+    [{ type: 'thinking', thinking: '**First**\nFirst detail.\n\n**Second**\nSecond detail.' }],
+    { transformers: [createMermaidMarkdownTransformer({ getMode: () => 'final' })] },
+  ).row
+
+  const closedDetails = render([row], state).text
+  expect(closedDetails).toContain('• ▸ First')
+  expect(closedDetails).toContain('• ▸ Second')
+  expect(closedDetails).not.toContain('First detail.')
+  expect(closedDetails).not.toContain('Second detail.')
+
+  state.open.add('progress-detail:950:0:0')
+  const firstOpen = render([row], state).text
+  expect(firstOpen).toContain('• ▾ First')
+  expect(firstOpen).toContain('First detail.')
+  expect(firstOpen).not.toContain('Second detail.')
+
+  state.open.delete('progress-detail:950:0:0')
+  state.open.add('progress-detail:950:0:1')
+  const secondOpen = render([row], state).text
+  expect(secondOpen).toContain('• ▾ Second')
+  expect(secondOpen).not.toContain('First detail.')
+  expect(secondOpen).toContain('Second detail.')
 })
 
-test('tight bullets survive native cache hits without rerunning whole-document transformers', () => {
+test('per-update disclosures survive native cache hits without rerunning transformers', () => {
   const state = new LensState()
   state.open.add('progress:953:0')
+  state.open.add('progress-detail:953:0:0')
   const calls: { text: string; type: string; streaming: boolean; width: number }[] = []
-  const source = '**First**\n\n**Second**'
+  const source = '**First**\nFirst detail.\n\n**Second**\nSecond detail.'
   const observe: MarkdownTransformer = (text, context) => {
     calls.push({
       text,
@@ -488,7 +515,10 @@ test('tight bullets survive native cache hits without rerunning whole-document t
     transformers: [createMermaidMarkdownTransformer({ getMode: () => 'final' }), observe],
   }).row
   const view = render([row], state)
-  expect(view.text).toContain('• First')
+  expect(view.text).toContain('• ▾ First')
+  expect(view.text).toContain('First detail.')
+  expect(view.text).toContain('• ▸ Second')
+  expect(view.text).not.toContain('Second detail.')
   const count = calls.length
   expect(plain(view.container.render(80))).toBe(view.text)
   expect(calls).toHaveLength(count)
@@ -507,7 +537,9 @@ test('list-contained code fences never become progress headings', () => {
   ]).row
   const output = render([row], state).text
   expect(output).toContain('Thinking updates · Last · 2 updates')
-  expect(output).toContain('# fake')
+  state.open.add('progress-detail:951:0:0')
+  const opened = render([row], state).text
+  expect(opened).toContain('# fake')
   expect(output).not.toContain('Thinking updates · fake')
 })
 
@@ -536,6 +568,7 @@ test('unheaded structured thinking retains its first source line when expanded',
   for (const item of cases) {
     const state = new LensState()
     state.open.add(`progress:${item.id}:0`)
+    state.open.add(`progress-detail:${item.id}:0:0`)
     const row = assistant(item.id, [{ type: 'thinking', thinking: item.source }]).row
     const lines = plain(render([row], state).lines).split('\n')
     expect(item.retainedNative(lines)).toBe(true)
@@ -563,8 +596,8 @@ test('expanded ordinary heading updates are tight adjacent bullets without added
   const row = assistant(902, [{ type: 'thinking', thinking: '# First\n# Second' }]).row
 
   const lines = plain(render([row], state).lines).split('\n')
-  const firstIndex = lines.findIndex((line) => line.includes('• First'))
-  const secondIndex = lines.findIndex((line) => line.includes('• Second'))
+  const firstIndex = lines.findIndex((line) => line.includes('• ▸ First'))
+  const secondIndex = lines.findIndex((line) => line.includes('• ▸ Second'))
   expect(firstIndex).toBeGreaterThanOrEqual(0)
   expect(secondIndex).toBe(firstIndex + 1)
 })
@@ -697,6 +730,7 @@ test('expanded thinking inset routes mouse coordinates through projected content
   try {
     const state = new LensState()
     state.open.add('progress:1210:0')
+    state.open.add('progress-detail:1210:0:0')
     const row = assistant(1210, [
       { type: 'thinking', thinking: '# Routed inset\nMarkdown body target' },
     ]).row

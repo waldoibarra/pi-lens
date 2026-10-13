@@ -447,11 +447,65 @@ export default function fixture(pi: ExtensionAPI) {
           screen.handleTerminalInput(`\x1b[<0;3;${y + 1}M`)
           screen.handleTerminalInput(`\x1b[<0;3;${y + 1}m`)
           screen.renderNow()
-          const after = screen.getScreenLines().map(stripTerminalSequences)
-          const first = after.findIndex((line) => line.includes('• First fixture update'))
-          const last = after.findIndex((line) => line.includes('• Older fixture update'))
-          if (first < 0 || last <= first || after.slice(first, last).some((line) => !line.trim())) {
-            throw new Error('Native host thinking did not render tight bullets')
+          const afterOuter = screen.getScreenLines().map(stripTerminalSequences)
+          const firstClosed = afterOuter.findIndex((line) =>
+            line.includes('• ▸ First fixture update'),
+          )
+          const olderClosed = afterOuter.findIndex((line) =>
+            line.includes('• ▸ Older fixture update'),
+          )
+          if (
+            firstClosed < 0 ||
+            olderClosed <= firstClosed ||
+            afterOuter.some(
+              (line) =>
+                line.includes('First reasoning detail.') ||
+                line.includes('Older reasoning detail.'),
+            )
+          ) {
+            throw new Error(
+              `Native host thinking did not render concise nested headers:\n${afterOuter.join('\n')}`,
+            )
+          }
+
+          screen.handleTerminalInput(`\x1b[<0;5;${firstClosed + 1}M`)
+          screen.handleTerminalInput(`\x1b[<0;5;${firstClosed + 1}m`)
+          screen.renderNow()
+          const afterFirst = screen.getScreenLines().map(stripTerminalSequences)
+          const firstOpen = afterFirst.findIndex((line) =>
+            line.includes('• ▾ First fixture update'),
+          )
+          const firstDetail = afterFirst.findIndex((line) =>
+            line.includes('First reasoning detail.'),
+          )
+          const olderStillClosed = afterFirst.findIndex((line) =>
+            line.includes('• ▸ Older fixture update'),
+          )
+          if (
+            firstOpen < 0 ||
+            firstDetail <= firstOpen ||
+            olderStillClosed <= firstDetail ||
+            afterFirst.some((line) => line.includes('Older reasoning detail.'))
+          ) {
+            throw new Error(
+              `First nested thinking disclosure did not reveal only its body:\n${afterFirst.join('\n')}`,
+            )
+          }
+
+          screen.handleTerminalInput(`\x1b[<0;5;${olderStillClosed + 1}M`)
+          screen.handleTerminalInput(`\x1b[<0;5;${olderStillClosed + 1}m`)
+          screen.renderNow()
+          const afterOlder = screen.getScreenLines().map(stripTerminalSequences)
+          const olderOpen = afterOlder.findIndex((line) =>
+            line.includes('• ▾ Older fixture update'),
+          )
+          const olderDetail = afterOlder.findIndex((line) =>
+            line.includes('Older reasoning detail.'),
+          )
+          if (olderOpen < 0 || olderDetail <= olderOpen) {
+            throw new Error(
+              `Second nested thinking disclosure did not reveal its body:\n${afterOlder.join('\n')}`,
+            )
           }
           ctx.ui.notify('FIXTURE_THINKING_BULLETS_OK', 'info')
           return { render: () => [], invalidate() {} }

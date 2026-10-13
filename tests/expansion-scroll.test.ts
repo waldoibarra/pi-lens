@@ -213,6 +213,19 @@ test.each(['tool', 'image', 'voice', 'thinking', 'input'] as const)(
       fixture.input(`\x1b[<0;70;${beforeY + 1}m`)
       tui.renderNow()
       expect([...state.open]).toHaveLength(1)
+      if (kind === 'thinking') {
+        const updateLines = plainLines(scrollUntil(fixture, tui, `• ▸ ${sentinel}`))
+        const updateY = updateLines.findIndex(
+          (line) => line.includes(`• ▸ ${sentinel}`) || line.includes(`•  ${sentinel}`),
+        )
+        expect(updateY).toBeGreaterThanOrEqual(0)
+        const updateAbove = updateLines.slice(0, updateY)
+        fixture.input(`\x1b[<0;3;${updateY + 1}M`)
+        fixture.input(`\x1b[<0;3;${updateY + 1}m`)
+        tui.renderNow()
+        expect([...state.open].sort()).toEqual(['progress-detail:100:0:0', 'progress:100:0'])
+        expect(plainLines(tui.getScreenLines()).slice(0, updateY)).toEqual(updateAbove)
+      }
       if (kind === 'image') {
         const detailsLines = plainLines(scrollUntil(fixture, tui, 'Details'))
         const detailsY = detailsLines.findIndex((line) => line.includes('Details'))

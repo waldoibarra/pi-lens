@@ -15,7 +15,8 @@ Origin-aware input labels and clipboard previews require the host contracts desc
 | `/lens clean`  | Shows each run's count and latest failure               |
 | `/lens raw`    | Restores native Pi rendering                            |
 
-A run contains consecutive tool calls without visible assistant prose or thinking history between them.
+A run contains observed tool calls within one safe activity span.
+Thinking-only assistant updates do not split the run; visible prose, inputs, approvals, errors, and unknown custom rows do.
 Normal is the default for a new or resumed session. Reload preserves the view and expanded choices.
 View changes redraw the existing transcript. Normal shows a single step without a redundant run header.
 
@@ -29,7 +30,7 @@ View changes redraw the existing transcript. Normal shows a single step without 
 | Click an image read                     | Shows the native image first; `Details` opens the original technical read output          |
 | Click a clipboard image                 | Shows its captured native image; `Details` exposes path, MIME, and byte count metadata    |
 | Click a question step                   | Shows the original row, plus recognized questions and answers when available              |
-| Click a voice request                   | Shows its original custom message                                                         |
+| Click a voice request                   | Shows every original message in that adjacent voice group                                 |
 | Click an extension input                | Shows every original native input row, including skill contents and arguments             |
 | Native tool expansion, default `Ctrl+O` | Reveals original tool rows and custom-message contents                                    |
 
@@ -54,28 +55,29 @@ Raw view and Pi's global expansion shortcut retain native scrolling behavior.
 
 ## Progress history
 
-Each activity segment has one explicitly labeled thinking disclosure showing its latest provided update.
-Visible prose and tool calls separate history segments; later activity stays below earlier work.
-Live-voice delegation starts a separate request. Earlier headings remain available inside that segment's expanded history.
+Each safe activity span has one explicitly labeled thinking disclosure after its tool group.
+Visible prose, inputs, approvals, errors, unknown custom rows, and live-voice delegation start separate spans.
+Tool calls and thinking-only assistant rows remain in one span, with tools rendered first.
+Earlier headings remain available inside that span's expanded history.
 
-| State             | Display                                                                                         |
-| ----------------- | ----------------------------------------------------------------------------------------------- |
-| Closed            | `Thinking updates` plus the latest update and available count                                   |
-| Open              | Two-column inset, tight bulleted updates in chronological order, with details under each update |
-| New update        | Heading changes in place until visible prose starts a new segment                               |
-| Thinking active   | One noninteractive `Thinking…` summary at the transcript tail, after notices and other work     |
-| Tools active      | The tail names observed running actions, including steps beyond the five-step preview           |
-| Activity finishes | The active tail disappears; historical disclosures remain interactive                           |
+| State             | Display                                                                                     |
+| ----------------- | ------------------------------------------------------------------------------------------- |
+| Closed            | `Thinking updates` plus the latest update and available count                               |
+| Open              | Two-column inset with compact per-update headers; click a header to show its full text      |
+| New update        | Heading changes in place until visible prose starts a new segment                           |
+| Thinking active   | One noninteractive `Thinking…` summary at the transcript tail, after notices and other work |
+| Tools active      | The tail names observed running actions, including steps beyond the five-step preview       |
+| Activity finishes | The active tail disappears; historical disclosures remain interactive                       |
 
 Before thinking content arrives, Pi's native working indicator provides activity feedback.
-Paragraph and code whitespace within an update is preserved inside the inset.
-Historical thinking remains expandable during streaming; opened details stay visible.
+Paragraph and code whitespace within an opened update is preserved inside the inset.
+Historical thinking remains expandable during streaming; opened update details stay visible.
 Verified native message-boundary spacers disappear in normal and clean views.
 Markdown whitespace, tool output, image allocation, and unknown native spacing remain unchanged.
 Document-wide references and content-changing Markdown transformers retain unsplit native rendering to preserve context.
 Assistant prose, tool rows, errors, and truncation warnings stay visible outside the progress fold.
 The heading comes from model-provided text; Lens makes no model calls to summarize it.
-Later thinking after visible work starts a new historical disclosure instead of mutating earlier open history.
+Later thinking after visible prose starts a new historical disclosure instead of mutating earlier open history.
 Keyboard access uses `/lens raw` and Pi's thinking toggle, normally `Ctrl+T`.
 
 ## Labels and retention
@@ -103,7 +105,9 @@ Host input IDs preserve disclosure choices across rebuilt rows and reload; branc
 Raw view and native global expansion recover the original rows, including regular-mode keyboard access.
 Unknown inputs remain fully visible in both views. Native custom notices retain their own presentation.
 Model labels come from the corresponding response, never the currently selected model.
-Reply model labels use a warm accent with light/dark variants; folded tool-run labels remain muted grey.
+Reply, run, and time labels use explicit cyan accents with light/dark variants.
+Composer-proven `You` labels use emerald; recognized voice `You` labels and headers use purple.
+Unknown, RPC, invalid, and missing origins remain neutral.
 Recognized model families use readable names, such as `GPT 6 Astra`, in reply, run, and delegated-agent labels.
 Namespace prefixes and versions remain intact. Unfamiliar non-Claude identifiers remain unchanged.
 Pi's bash tool lacks Claude Code's description field, so its fallback is `Ran a shell command`.
@@ -161,7 +165,8 @@ When metadata is absent, Lens uses `Ran a tool batch` rather than guessing the s
 | Other custom tools         | Plain labels and generic counts; native expansion preserves their original renderer                   |
 | Other transcript modifiers | Combination is unverified; do not stack competing grouping extensions                                 |
 
-Live-voice request previews use the first text line. Expansion restores the entire native message.
+Adjacent live-voice request previews group only with other recognized voice delegation messages.
+Expansion restores every original native message in that adjacent group.
 Unknown custom messages, including warnings and permission prompts, remain untouched.
 New `pi-subagents` wake inputs sent through `sendUserMessage` fold when the patched host binds extension origin.
 Historical unbound wakes remain visible. Existing subagent custom-message folds and requests retain their native renderer.

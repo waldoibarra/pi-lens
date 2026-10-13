@@ -17,7 +17,8 @@ Mixed-tool runs and message footers also require access to neighboring transcrip
 Transcript integration and guarded native input bindings live in `src/adapter.ts`.
 Tool data conversion lives in `src/pi-data.ts`.
 `src/progress.ts` projects thinking regions while retaining native prose, warnings, and message markers.
-It exposes current thinking separately; presentation appends one inert activity summary after every transcript child.
+Presentation plans safe activity spans so thinking-only rows do not split observed tool groups.
+It exposes current thinking separately; presentation appends one inert activity summary after notices and work.
 `src/spacing.ts` removes verified `Spacer(1)` shell padding, never whitespace emitted by content renderers.
 `src/hover.ts` observes mouse input before Pi's viewport listener consumes it.
 The observer never consumes or rewrites input, captures a pointer, or changes keyboard focus.
@@ -38,7 +39,8 @@ Clipboard normalization uses optional namespace access to the host helper, never
 The helper receives the binding's exact message; only normalized composer captures enter the clipboard renderer.
 
 Only exact message-object bindings group skill and argument rows; text and timestamps never establish identity.
-Composer-origin rows receive `You`; extension-origin rows receive an expandable `Extension input` header.
+Composer-origin rows receive emerald `You`; extension-origin rows receive an expandable `Extension input` header.
+Recognized voice delegation rows receive purple headers and `You` labels.
 RPC, unknown, malformed, conflicting, and missing origins remain neutral and visible.
 Extension origin identifies transport, not a particular extension, agent, or authenticated sender.
 Hand-edited session metadata is not an authentication boundary.
@@ -75,12 +77,14 @@ If Pi cannot render the image as graphics, Lens leaves the complete native row u
 Lens retains no separate tool-detail copy and imposes no additional output cap.
 Thinking history uses display-only native Markdown rendering, including when native thinking starts hidden.
 Visible assistant prose splits activity into separate stable disclosures within the same native row.
-Ordinary updates render separately with plain compact labels and bullet gutters; rich document context retains native whole-run rendering.
+Ordinary updates render as compact nested headers; each header expands to its full native Markdown text.
+Reference-dependent documents and Markdown transformers retain native whole-run rendering.
 Stored message objects never change.
 The original thinking-visibility settings remain unchanged.
 Native mouse handlers keep their controls; collapsing a native body also closes its Lens disclosure.
 Reload applies retained choices to rebuilt rows. Branch navigation discards abandoned disclosure choices.
 Message shells and folded thinking drop verified boundary spacers, preserving prose and code whitespace.
+Tool folds render before the span's thinking disclosure; hard boundaries retain native order.
 
 Raw mode delegates to the original transcript renderer and clears Lens's activity status.
 The public global-expansion flag distinguishes opening every row from opening an individual step.

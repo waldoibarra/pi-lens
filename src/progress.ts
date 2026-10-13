@@ -68,6 +68,10 @@ type ThinkingSegment = {
   run: PositionedThinkingRun
 }
 
+function updateKey(segment: ThinkingSegment, updateIndex: number): string {
+  return `progress-detail:${segment.row.timestamp}:${segment.run.runIndex}:${updateIndex}`
+}
+
 type ProgressGroup = {
   segments: ThinkingSegment[]
   key: string
@@ -85,6 +89,9 @@ type MaterializedThinking = {
   outputPad: number | undefined
   markdownTransformers: readonly unknown[] | undefined
   streaming: boolean
+  state: LensState
+  header: ProgressHeader
+  redraw: () => void
   children: Component[]
 }
 
@@ -305,7 +312,6 @@ function collectAssistantContent(
       boundary++
     } else if (block.type === 'toolCall') {
       activity.set(boundary, { streaming, relevant: 'tool' })
-      boundary++
     }
   }
   return { runs, boundarySpan: boundary, activity }
@@ -397,7 +403,54 @@ class NativeOrBulletedThinking implements Component {
   }
 }
 
-function segmentedThinkingChildren(info: SupportedAssistant): Component[] | undefined {
+class NestedThinkingUpdates implements Component {
+  private body: Component = stack([])
+
+  constructor(
+    private readonly segment: ThinkingSegment,
+    private readonly state: LensState,
+    private readonly header: ProgressHeader,
+    private readonly redraw: () => void,
+  ) {}
+
+  private build(): Component {
+    const children: Component[] = []
+    this.segment.run.updates.forEach((update, index) => {
+      const key = updateKey(this.segment, index)
+      const open = this.state.open.has(key)
+      children.push(
+        this.header(key, safeText(`• ${open ? '▾' : '▸'} ${update.title}`), () => {
+          this.state.toggle(key)
+          this.redraw()
+        }),
+      )
+      if (!open) return
+      const body = update.body ? thinkingChildForText(this.segment.row, update.body) : undefined
+      if (body) children.push(new Inset(body, 2))
+    })
+    return stack(children)
+  }
+
+  render(width: number): string[] {
+    this.body = this.build()
+    return this.body.render(width)
+  }
+
+  invalidate(): void {
+    this.body.invalidate?.()
+  }
+
+  handleMouse(event: Parameters<NonNullable<Component['handleMouse']>>[0]) {
+    return this.body.handleMouse?.(event)
+  }
+}
+
+function segmentedThinkingChildren(
+  info: SupportedAssistant,
+  state?: LensState,
+  header?: ProgressHeader,
+  redraw?: () => void,
+): Component[] | undefined {
   const children: Component[] = []
   for (const run of info.runs) {
     const capture: { text?: string } = {}
@@ -411,21 +464,27 @@ function segmentedThinkingChildren(info: SupportedAssistant): Component[] | unde
       captureText,
     ])?.[0]
     if (!native) return undefined
-    const bullets: Component[] = []
-    if (!run.fallbackWholeRun)
-      for (const update of run.updates) {
-        const body = update.body ? thinkingChildForText(info, update.body) : undefined
-        if (update.body && !body) return undefined
-        bullets.push(new BulletThinking(new CompactThinkingUpdate(update.title, body)))
-      }
+    const bullets =
+      state && header && redraw
+        ? new NestedThinkingUpdates({ row: info, run }, state, header, redraw)
+        : stack(
+            run.updates.map(
+              (update) => new BulletThinking(new CompactThinkingUpdate(update.title, undefined)),
+            ),
+          )
     children.push(
-      new NativeOrBulletedThinking(native, stack(bullets), capture, run.text, run.fallbackWholeRun),
+      new NativeOrBulletedThinking(native, bullets, capture, run.text, run.fallbackWholeRun),
     )
   }
   return children
 }
 
-function expandedThinkingChildren(info: SupportedAssistant): Component[] | undefined {
+function expandedThinkingChildren(
+  info: SupportedAssistant,
+  state: LensState,
+  header: ProgressHeader,
+  redraw: () => void,
+): Component[] | undefined {
   const cached = materialized.get(info.component)
   if (
     cached &&
@@ -435,11 +494,14 @@ function expandedThinkingChildren(info: SupportedAssistant): Component[] | undef
     cached.hiddenThinkingLabel === info.internals.hiddenThinkingLabel &&
     cached.outputPad === info.internals.outputPad &&
     cached.markdownTransformers === info.internals.markdownTransformers &&
-    cached.streaming === info.streaming
+    cached.streaming === info.streaming &&
+    cached.state === state &&
+    cached.header === header &&
+    cached.redraw === redraw
   )
     return cached.children
 
-  const children = segmentedThinkingChildren(info)
+  const children = segmentedThinkingChildren(info, state, header, redraw)
   if (!children) return undefined
   materialized.set(info.component, {
     message: info.internals.lastMessage,
@@ -449,6 +511,9 @@ function expandedThinkingChildren(info: SupportedAssistant): Component[] | undef
     outputPad: info.internals.outputPad,
     markdownTransformers: info.internals.markdownTransformers,
     streaming: info.streaming,
+    state,
+    header,
+    redraw,
     children,
   })
   return children
@@ -467,7 +532,8 @@ function inspectAssistant(component: Component): SupportedAssistant | undefined 
     thinkingIndices,
     internals.isStreaming === true,
   )
-  if (!collected.runs.length || thinkingIndices.length !== collected.runs.length) return undefined
+  const runs = collected.runs
+  if (!runs.length || thinkingIndices.length !== runs.length) return undefined
   const info: SupportedAssistant = {
     component,
     internals,
@@ -475,19 +541,19 @@ function inspectAssistant(component: Component): SupportedAssistant | undefined 
     timestamp: message.timestamp,
     contentChildren: contentContainer.children,
     thinkingIndices,
-    runs: collected.runs,
+    runs,
     streaming: internals.isStreaming === true,
     changed: materialized.get(component)?.contentChildren !== contentContainer.children,
   }
-  if (!expandedThinkingChildren(info)) return undefined
+  if (!segmentedThinkingChildren(info)) return undefined
   return info
 }
 
-function isBoundary(child: Component): boolean {
-  if (child instanceof UserMessageComponent) return true
-  if (!(child instanceof CustomMessageComponent)) return false
+function boundaryKind(child: Component): 'none' | 'hard' | 'reset' {
+  if (child instanceof UserMessageComponent) return 'reset'
+  if (!(child instanceof CustomMessageComponent)) return 'none'
   const message = record((child as unknown as { message?: unknown }).message)
-  return message.customType === 'pi-live-codex-delegation'
+  return message.customType === 'pi-live-codex-delegation' ? 'reset' : 'hard'
 }
 
 function buildGroup(segments: ThinkingSegment[]): ProgressGroup | undefined {
@@ -512,10 +578,15 @@ function buildGroup(segments: ThinkingSegment[]): ProgressGroup | undefined {
   }
 }
 
-function fullHistory(group: ProgressGroup): Component[] {
+function fullHistory(
+  group: ProgressGroup,
+  state: LensState,
+  header: ProgressHeader,
+  redraw: () => void,
+): Component[] {
   const children: Component[] = []
   for (const segment of group.segments) {
-    const expanded = expandedThinkingChildren(segment.row)
+    const expanded = expandedThinkingChildren(segment.row, state, header, redraw)
     const child = expanded?.[segment.run.runIndex]
     if (child) children.push(child)
   }
@@ -529,8 +600,8 @@ class ProgressAssistantDisplay implements Component {
     private readonly info: SupportedAssistant,
     private readonly groups: ProgressGroup[],
     private readonly state: LensState,
-    header: ProgressHeader,
-    redraw: () => void,
+    private readonly header: ProgressHeader,
+    private readonly redraw: () => void,
   ) {
     for (const group of groups) {
       if (group.anchor.row !== info) continue
@@ -560,7 +631,10 @@ class ProgressAssistantDisplay implements Component {
       if (group.anchor.row !== this.info) continue
       const header = this.headerComponents.get(group.key)!
       projected[group.anchorIndex] = this.state.open.has(group.key)
-        ? stack([header, new Inset(stack(fullHistory(group)), 2)])
+        ? stack([
+            header,
+            new Inset(stack(fullHistory(group, this.state, this.header, this.redraw)), 2),
+          ])
         : header
     }
     content.children = projected
@@ -595,15 +669,15 @@ export function projectProgress(
   let boundary = 0
   let latestActivityBoundary: number | undefined
   for (const child of children) {
-    if (isBoundary(child)) {
-      latestActivityBoundary = undefined
+    const boundaryType = boundaryKind(child)
+    if (boundaryType !== 'none') {
+      if (boundaryType === 'reset') latestActivityBoundary = undefined
       boundary++
       continue
     }
     if (child instanceof ToolExecutionComponent) {
       boundaryActivity.set(boundary, { streaming: false, relevant: 'tool' })
       latestActivityBoundary = boundary
-      boundary++
       continue
     }
 

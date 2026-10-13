@@ -80,9 +80,16 @@ function clearIndividualOpens(state: LensState): void {
 }
 
 function mirrorNative(entries: readonly DisclosureEntry[], state: LensState): void {
+  const expandedByKey = new Map<string, boolean>()
   for (const entry of entries) {
-    if (nativeExpanded(entry.row)) state.open.add(entry.key)
-    else state.open.delete(entry.key)
+    expandedByKey.set(
+      entry.key,
+      (expandedByKey.get(entry.key) ?? false) || nativeExpanded(entry.row),
+    )
+  }
+  for (const [key, expanded] of expandedByKey) {
+    if (expanded) state.open.add(key)
+    else state.open.delete(key)
   }
 }
 

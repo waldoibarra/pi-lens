@@ -27,7 +27,7 @@ npm's `pi-lens` name belongs to an unrelated project; do not install it.
 - **Normal:** counts each tool run, showing five steps before an expandable remainder.
 - **Clean:** keeps each run's count and latest failure.
 - **Raw:** restores Pi's own transcript rendering.
-- **Thinking updates:** shows the latest update; expand it for a compact bulleted history.
+- **Thinking updates:** one disclosure follows each safe tool span; nested headers reveal full updates.
 
 Switch with `/lens normal`, `/lens clean`, or `/lens raw`.
 Hover over a clickable header in fullscreen mode to highlight it.
@@ -36,7 +36,7 @@ Tool batches summarize their observed actions instead of showing `Codemode`.
 Opening a Lens step keeps your scroll position; its details extend below the header.
 Pi's native tool-expansion shortcut opens all rows.
 
-Live-voice delegation messages also fold to one line. Their original contents remain available on expansion.
+Adjacent live-voice delegation messages fold together. Their original contents remain available on expansion.
 Lens leaves the voice editor, visualizer, microphone, and controls alone.
 
 ## What stays unchanged

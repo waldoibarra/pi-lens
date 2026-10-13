@@ -6,7 +6,14 @@ import {
   UserMessageComponent,
   initTheme,
 } from '@earendil-works/pi-coding-agent'
-import { Container, Spacer, Text, visibleWidth, rgbColor } from '@earendil-works/pi-tui'
+import {
+  Container,
+  Spacer,
+  Text,
+  visibleWidth,
+  rgbColor,
+  type Component,
+} from '@earendil-works/pi-tui'
 import { theme } from '../node_modules/@earendil-works/pi-coding-agent/dist/modes/interactive/theme/theme.js'
 import { LensState } from '../src/state'
 import { projectTranscript } from '../src/presentation'
@@ -105,6 +112,7 @@ test('the transcript shows only the latest thinking heading with expandable hist
   expect(collapsed).not.toContain('First update')
   expect(collapsed).toContain('VISIBLE_REPLY')
   state.open.add('progress:100:0')
+  state.open.add('progress-detail:100:0:0')
   const opened = render([row], state).text
   expect(opened).toContain('First update')
   expect(opened).toContain('Earlier detail')
@@ -150,7 +158,7 @@ test('streaming expanded progress invalidates hover when a following tool header
   expect(hoverFor(state).isHovered('step:0')).toBe(false)
 })
 
-test('reply model stamps use a warm role color while tool stamps stay grey', () => {
+test('model and time stamps use cyan in both themes', () => {
   try {
     for (const appearance of ['dark', 'light'] as const) {
       initTheme(appearance, false)
@@ -170,8 +178,8 @@ test('reply model stamps use a warm role color while tool stamps stay grey', () 
       expect(lines).toHaveLength(2)
       const toolLabel = plain([lines[0]]).trim()
       const replyLabel = plain([lines[1]]).trim()
-      expect(lines[0]).toContain(theme.fg('muted', toolLabel))
-      const color = appearance === 'light' ? rgbColor(166, 71, 45) : rgbColor(217, 119, 87)
+      const color = appearance === 'light' ? rgbColor(8, 145, 178) : rgbColor(34, 211, 238)
+      expect(lines[0]).toContain(theme.style(toolLabel, { fg: color, bold: true }))
       expect(lines[1]).toContain(theme.style(replyLabel, { fg: color, bold: true }))
       expect(JSON.stringify(message)).toBe(before)
     }
@@ -245,7 +253,7 @@ test('assistant prose keeps adjacent tool runs separate', () => {
   expect(output).not.toContain('Read 2 files')
 })
 
-test('tool cycles after visible work keep historical thinking segments stable', () => {
+test('tool cycles share one safe activity span with thinking after tools', () => {
   const state = new LensState()
   const first = {
     role: 'assistant',
@@ -274,15 +282,15 @@ test('tool cycles after visible work keep historical thinking segments stable', 
     tool('1'),
   ]
   const closed = render(children, state).text
-  expect(closed.match(/Thinking updates/g)).toHaveLength(2)
-  expect(closed.indexOf('Before first tool')).toBeLessThan(closed.indexOf('Read 0.ts'))
-  expect(closed.indexOf('After first tool')).toBeGreaterThan(closed.indexOf('Read 0.ts'))
+  expect(closed.match(/Thinking updates/g)).toHaveLength(1)
+  expect(closed).toContain('Read 2 files')
+  expect(closed.indexOf('Read 2 files')).toBeLessThan(closed.indexOf('Thinking updates'))
+  expect(closed).toContain('Thinking updates · After first tool · 2 updates')
   state.open.add('progress:201:0')
   const open = render(children, state).text
-  expect(open).toContain('▾ Thinking updates · Before first tool')
-  expect(open).toContain('▸ Thinking updates · After first tool')
-  expect(open).toContain('• Before first tool')
-  expect(open).not.toContain('• After first tool')
+  expect(open).toContain('▾ Thinking updates · After first tool · 2 updates')
+  expect(open).toContain('• ▸ Before first tool')
+  expect(open).toContain('• ▸ After first tool')
 })
 
 test.each(['normal', 'clean'] as const)('live activity is an appended inert tail in %s', (view) => {
@@ -304,6 +312,7 @@ test.each(['normal', 'clean'] as const)('live activity is an appended inert tail
   } as never)
   const children = [tool('0'), thinking, notice]
   state.open.add('progress:202:0')
+  state.open.add('progress-detail:202:0:0')
   let projected = projectTranscript(children, state, theme, () => {})
   expect(plain(projected.at(-1)!.render(80))).toContain('Thinking… · THINKING_B')
   expect(projected.at(-1)!.handleMouse).toBeUndefined()
@@ -638,7 +647,7 @@ test('global collapse clears individual tool and voice opens without closing run
   const state = observed(1)
   state.open.add('step:0')
   state.open.add('image-details:0')
-  state.open.add('voice:voice-global')
+  state.open.add('voice:voice-global@1')
   state.open.add('run:0')
   render([row, voice], state, 80, true)
   render([row, voice], state)
@@ -675,10 +684,314 @@ test('voice delegation folds and expands without touching its contents', () => {
   const state = new LensState()
   expect(render([row], state).text).toContain('▸ Voice request: Inspect the repository.')
   expect(render([row], state).text).not.toContain('Keep all changes private.')
-  state.open.add('voice:voice-1')
+  state.open.add('voice:voice-1@123')
   expect(render([row], state).text).toContain('Keep all changes private.')
   expect((row as unknown as { _expanded: boolean })._expanded).toBe(true)
   expect(JSON.stringify(message)).toBe(before)
+})
+
+test('voice disclosure identity round-trips through reconcile and reload', () => {
+  const voice = (id: string, text: string, timestamp?: number) =>
+    new CustomMessageComponent({
+      role: 'custom',
+      customType: 'pi-live-codex-delegation',
+      content: text,
+      details: { delegationId: id },
+      ...(timestamp === undefined ? {} : { timestamp }),
+      display: true,
+    } as never)
+  const entry = (id: string) => ({
+    type: 'custom_message',
+    customType: 'pi-live-codex-delegation',
+    details: { delegationId: id },
+  })
+  const click = (children: Component[], state: LensState, label: string) => {
+    const view = render(children, state)
+    const lines = view.container.render(80)
+    const y = lines.findIndex((line) => line.includes(label))
+    expect(y).toBeGreaterThanOrEqual(0)
+    view.container.handleMouse({
+      type: 'click',
+      button: 'left',
+      x: 2,
+      y,
+      screenX: 2,
+      screenY: y,
+      width: 80,
+      height: lines.length,
+      shift: false,
+      alt: false,
+      ctrl: false,
+    } as never)
+    const keys = [...state.open]
+    expect(keys).toHaveLength(1)
+    return keys[0]!
+  }
+
+  const single = voice('id%40123', 'SINGLE_PREVIEW\nSINGLE_BODY', -1.25)
+  const singleState = new LensState()
+  const singleKey = click([single], singleState, 'Voice request: SINGLE_PREVIEW')
+  singleState.reconcile([entry('id%40123')])
+  expect(singleState.open.has(singleKey)).toBe(true)
+  const singleReload = voice('id%40123', 'SINGLE_PREVIEW\nSINGLE_RELOAD_BODY', -1.25)
+  expect(render([singleReload], singleState).text).toContain('SINGLE_RELOAD_BODY')
+  expect((singleReload as unknown as { _expanded: boolean })._expanded).toBe(true)
+  singleState.reconcile([])
+  expect(singleState.open.has(singleKey)).toBe(false)
+
+  const ids = [
+    '550e8400-e29b-41d4-a716-446655440000',
+    'literal%percent',
+    'id@123',
+    'pipe|id',
+    'colon:id',
+  ]
+  const timestamps = [-1, 1.5, 2, 3, undefined]
+  const grouped = ids.map((id, index) =>
+    voice(id, `GROUP_${index}_PREVIEW\nGROUP_${index}_BODY`, timestamps[index]),
+  )
+  const groupState = new LensState()
+  const groupKey = click(grouped, groupState, '5 requests: GROUP_0_PREVIEW')
+  groupState.reconcile(ids.map(entry))
+  expect(groupState.open.has(groupKey)).toBe(true)
+  const groupReload = ids.map((id, index) =>
+    voice(id, `GROUP_${index}_PREVIEW\nGROUP_${index}_RELOAD_BODY`, timestamps[index]),
+  )
+  const groupReloadText = render(groupReload, groupState).text
+  for (const index of ids.keys()) expect(groupReloadText).toContain(`GROUP_${index}_RELOAD_BODY`)
+  for (const row of groupReload)
+    expect((row as unknown as { _expanded: boolean })._expanded).toBe(true)
+  groupState.reconcile(ids.filter((id) => id !== 'pipe|id').map(entry))
+  expect(groupState.open.has(groupKey)).toBe(false)
+})
+
+test('adjacent voice requests group separately from tools and unknown custom rows', () => {
+  const voice = (id: string, text: string, timestamp: number) =>
+    new CustomMessageComponent({
+      role: 'custom',
+      customType: 'pi-live-codex-delegation',
+      content: text,
+      details: { delegationId: id },
+      timestamp,
+      display: true,
+    } as never)
+  const unknown = new CustomMessageComponent({
+    role: 'custom',
+    customType: 'other-extension',
+    content: 'OTHER_EXTENSION_BOUNDARY',
+    display: true,
+  } as never)
+  const state = observed(1)
+  const rows = [
+    voice('voice-a', 'FIRST_VOICE_BODY', 1),
+    voice('voice-b', 'SECOND_VOICE_BODY', 2),
+    tool('0'),
+    voice('voice-c', 'THIRD_VOICE_BODY', 3),
+    unknown,
+    voice('voice-d', 'FOURTH_VOICE_BODY', 4),
+  ]
+  const closed = render(rows, state).text
+  expect(closed).toContain('▸ 2 requests: FIRST_VOICE_BODY')
+  expect(closed.match(/Voice request:/g)).toHaveLength(2)
+  expect(closed).toContain('Read 0.ts')
+  expect(closed).toContain('OTHER_EXTENSION_BOUNDARY')
+  expect(closed).not.toContain('SECOND_VOICE_BODY')
+  state.open.add('voice:voice-a@1|voice-b@2')
+  const opened = render(rows, state).text
+  expect(opened).toContain('FIRST_VOICE_BODY')
+  expect(opened).toContain('SECOND_VOICE_BODY')
+})
+
+test('native voice message spacers join adjacent voice requests without extra rows', () => {
+  const voice = (id: string, text: string, timestamp: number) =>
+    new CustomMessageComponent({
+      role: 'custom',
+      customType: 'pi-live-codex-delegation',
+      content: text,
+      details: { delegationId: id },
+      timestamp,
+      display: true,
+    } as never)
+  const rows = [
+    voice('spaced-a', 'FIRST_PREVIEW\nFIRST_BODY', 1),
+    new Spacer(1),
+    voice('spaced-b', 'SECOND_PREVIEW\nSECOND_BODY', 2),
+  ]
+  const state = new LensState()
+  const closedLines = render(rows, state).container.render(80)
+  const closed = plain(closedLines)
+  expect(closed).toContain('▸ 2 requests: FIRST_PREVIEW')
+  expect(closed).not.toContain('Voice request: SECOND_PREVIEW')
+  expect(closed).not.toContain('SECOND_BODY')
+  expect(closedLines.map((line) => plain([line]).trim())).not.toContain('')
+
+  state.open.add('voice:spaced-a@1|spaced-b@2')
+  const opened = render(rows, state).text
+  expect(opened).toContain('FIRST_BODY')
+  expect(opened).toContain('SECOND_BODY')
+})
+
+test('voice grouping treats tools, text, other custom rows, and unknown spacers as barriers', () => {
+  const voice = (id: string, text: string, timestamp: number) =>
+    new CustomMessageComponent({
+      role: 'custom',
+      customType: 'pi-live-codex-delegation',
+      content: text,
+      details: { delegationId: id },
+      timestamp,
+      display: true,
+    } as never)
+  const unknown = new CustomMessageComponent({
+    role: 'custom',
+    customType: 'other-extension',
+    content: 'OTHER_CUSTOM_BARRIER',
+    display: true,
+  } as never)
+  const cases = [
+    ['tool', tool('0'), 'Read 0.ts'],
+    ['text', new Text('TEXT_BARRIER', 0, 0), 'TEXT_BARRIER'],
+    ['custom', unknown, 'OTHER_CUSTOM_BARRIER'],
+    ['spacer', new Spacer(2), ''],
+  ] as const
+  for (const [label, barrier, marker] of cases) {
+    const lines = render(
+      [
+        voice(`${label}-a`, `${label.toUpperCase()}_A`, 1),
+        barrier,
+        voice(`${label}-b`, `${label.toUpperCase()}_B`, 2),
+      ],
+      observed(1),
+    )
+      .container.render(80)
+      .map((line) => plain([line]).trim())
+    const text = lines.join('\n')
+    expect(text).not.toContain('2 requests')
+    expect(text.match(/Voice request:/g)).toHaveLength(2)
+    if (marker) expect(text).toContain(marker)
+    else expect(lines.filter((line) => line === '')).toHaveLength(2)
+  }
+})
+
+test.each([
+  ['first normal', 0, 'normal'],
+  ['last normal', 2, 'normal'],
+  ['first clean', 0, 'clean'],
+  ['last clean', 2, 'clean'],
+] as const)(
+  'raw-expanded %s voice group member keeps the grouped disclosure open',
+  (_label, expandedIndex, view) => {
+    const voice = (id: string, text: string, timestamp: number) =>
+      new CustomMessageComponent({
+        role: 'custom',
+        customType: 'pi-live-codex-delegation',
+        content: text,
+        details: { delegationId: id },
+        timestamp,
+        display: true,
+      } as never)
+    const rows = [
+      voice('raw-a', 'RAW_A_PREVIEW\nRAW_A_BODY', 1),
+      new Spacer(1),
+      voice('raw-b', 'RAW_B_PREVIEW\nRAW_B_BODY', 2),
+    ] as const
+    const expanded = rows[expandedIndex] as unknown as {
+      setExpanded?: (expanded: boolean) => void
+      _expanded?: boolean
+    }
+    if (expanded.setExpanded) expanded.setExpanded(true)
+    else expanded._expanded = true
+    const state = new LensState()
+    state.view = 'raw'
+    expect(projectTranscript([...rows], state, theme, () => {})).toEqual([...rows])
+    state.view = view
+
+    const reopened = render([...rows], state).text
+    expect(state.open.has('voice:raw-a@1|raw-b@2')).toBe(true)
+    expect(reopened).toContain('RAW_A_BODY')
+    expect(reopened).toContain('RAW_B_BODY')
+  },
+)
+
+test('grouped voice disclosures close when every raw member closes and during global collapse', () => {
+  const voice = (id: string, text: string, timestamp: number) =>
+    new CustomMessageComponent({
+      role: 'custom',
+      customType: 'pi-live-codex-delegation',
+      content: text,
+      details: { delegationId: id },
+      timestamp,
+      display: true,
+    } as never)
+  const rows = [
+    voice('close-a', 'CLOSE_A_PREVIEW\nCLOSE_A_BODY', 1),
+    new Spacer(1),
+    voice('close-b', 'CLOSE_B_PREVIEW\nCLOSE_B_BODY', 2),
+  ]
+  const key = 'voice:close-a@1|close-b@2'
+  const state = new LensState()
+  state.open.add(key)
+  render(rows, state)
+  for (const row of [rows[0], rows[2]]) {
+    const native = row as unknown as {
+      setExpanded?: (expanded: boolean) => void
+      _expanded?: boolean
+    }
+    if (native.setExpanded) native.setExpanded(false)
+    else native._expanded = false
+  }
+  state.view = 'raw'
+  render(rows, state)
+  state.view = 'normal'
+  const closed = render(rows, state).text
+  expect(state.open.has(key)).toBe(false)
+  expect(closed).toContain('▸ 2 requests: CLOSE_A_PREVIEW')
+  expect(closed).not.toContain('CLOSE_A_BODY')
+  expect(closed).not.toContain('CLOSE_B_BODY')
+
+  state.open.add(key)
+  render(rows, state, 80, true)
+  render(rows, state)
+  expect(state.open.has(key)).toBe(false)
+  expect((rows[0] as unknown as { _expanded: boolean })._expanded).toBe(false)
+  expect((rows[2] as unknown as { _expanded: boolean })._expanded).toBe(false)
+})
+
+test('voice and composer provenance labels use purple and emerald accents', () => {
+  try {
+    for (const appearance of ['dark', 'light'] as const) {
+      initTheme(appearance, false)
+      const voice = new CustomMessageComponent({
+        role: 'custom',
+        customType: 'pi-live-codex-delegation',
+        content: 'Voice colors',
+        details: { delegationId: 'voice-color' },
+        timestamp: 123,
+        display: true,
+      } as never)
+      const message = { role: 'user' as const, content: 'Typed message', timestamp: 123 }
+      const user = new UserMessageComponent(message.content)
+      Object.defineProperty(user, 'binding', {
+        value: {
+          message,
+          inputDisplay: { version: 1, input: { id: 'typed-color', origin: 'composer' } },
+          part: 'body',
+        },
+      })
+      const lines = render([voice, user], new LensState()).container.render(80)
+      const purple = appearance === 'light' ? rgbColor(126, 34, 206) : rgbColor(196, 181, 253)
+      const emerald = appearance === 'light' ? rgbColor(4, 120, 87) : rgbColor(52, 211, 153)
+      const voiceHeader = lines.find((line) => line.includes('Voice request'))!
+      const voiceFooter = lines.find((line) => line.includes('You · 00:00'))!
+      const composerFooter = lines.filter((line) => line.includes('You · 00:00')).at(-1)!
+      expect(voiceHeader).toContain(
+        theme.style('▸ Voice request: Voice colors', { fg: purple, bold: true }),
+      )
+      expect(voiceFooter).toContain(theme.style('You · 00:00', { fg: purple, bold: true }))
+      expect(composerFooter).toContain(theme.style('You · 00:00', { fg: emerald, bold: true }))
+    }
+  } finally {
+    initTheme('dark', false)
+  }
 })
 
 test('unknown notices remain visible and narrow rows fit', () => {
